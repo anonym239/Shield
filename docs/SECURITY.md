@@ -7,6 +7,10 @@ Diese Seite beschreibt ehrlich, was Shield abdeckt und was nicht.
 
 * **Werbung, Tracker, Malware, Phishing per DNS** – Anfragen an bekannte Domains werden lokal mit `0.0.0.0`/`::`
   (oder NXDOMAIN) beantwortet. Listen: AdGuard DNS Filter, EasyPrivacy, URLhaus, Phishing Army (+ optional malware-filter).
+* **CNAME-Cloaking** – zeigt eine harmlos wirkende Subdomain per CNAME auf eine blockierte Tracker-Domain,
+  wird die Antwort trotzdem blockiert (Stufe A und B).
+* **Umgehung über den Resolver** – im vollen Tunnel wird jede Anfrage an Port 53 (egal welche IP) abgefangen;
+  die virtuelle DNS-Adresse nimmt nur Port 53 an (kein DoT-Umweg über 853).
 * **Mitlesen von DNS** – erlaubte Anfragen gehen ausschließlich per DNS-over-HTTPS an den gewählten Anbieter.
   Der Upstream wird über feste Bootstrap-IPs erreicht, es gibt nie eine Klartext-DNS-Anfrage ins Netz.
 * **Apps, die nach Hause telefonieren** – Firewall pro App und Tracker-Radar.

@@ -26,4 +26,11 @@ Erste Version mit allen Phasen 0–7 aus `SPEC.md`.
   Sicherheits-Score 0–100 mit Top-3-Empfehlungen, Panik-Knopf.
 - **Phase 7 – Extras:** Homelab-Kacheln mit Erreichbarkeit, Wake-on-LAN, Nachtmodus, Datenspar-Modus,
   lokaler Wochenbericht.
+- Schutz vor CNAME-Cloaking; im vollen Tunnel nimmt die virtuelle DNS-Adresse nur Port 53 an.
+- Ende-zu-Ende-Tests im Android-Emulator (Stufe A, Stufe B, Panik-Modus) und Room-DAO-Tests in CI.
+
+### Behoben
+- Stufe A: DoH-Socket wird vor `protect()` gebunden – vorher wurden erlaubte Domains nicht aufgelöst (vom E2E-Test gefunden).
+
+### Hinzugefügt (Auslieferung)
 - Release-Workflow: signierte APK und Windows-Installer (`Shield-Setup.exe`, installiert die APK per ADB).

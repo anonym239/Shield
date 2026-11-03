@@ -7,7 +7,7 @@ Stand: Version 1.0.0 (2026-11-03). Alle Phasen 0–7 aus `SPEC.md` §8 sind impl
 | Phase | Inhalt | Tests |
 |---|---|---|
 | 0 | Gerüst, Theme, Navigation, Logging-Fassade, Room, CI | `RedactorTest` |
-| 1 | DNS-Blocker Stufe A, Listen, DoH, Cache, eigene Regeln, Protokoll | `DnsCodecTest`, `IpPacketTest`, `DnsCacheTest`, `DnsResolverTest`, `BlocklistParserTest`, `FilterEngineTest` |
+| 1 | DNS-Blocker Stufe A, Listen, DoH, Cache, eigene Regeln, Protokoll, CNAME-Cloaking-Schutz | `DnsCodecTest`, `IpPacketTest`, `DnsCacheTest`, `DnsResolverTest`, `CnameCloakingTest`, `BlocklistParserTest`, `FilterEngineTest`, `VpnEndToEndTest` |
 | 2 | Dashboard, Selbsttest 1–5, Widget, QS-Kachel | `ProtectionStatusTest` |
 | 3 | App-Firewall (DNS-basiert), Tracker-Radar, Rangliste | `FirewallRulesTest` |
 | 4 | Debug-Screen, Export, Aufbewahrung, Kein Verlauf, Backup | `BackupCryptoTest` |
@@ -15,9 +15,24 @@ Stand: Version 1.0.0 (2026-11-03). Alle Phasen 0–7 aus `SPEC.md` §8 sind impl
 | 6 | WLAN-/Geräte-/Berechtigungs-Check, Phishing-Kategorie, Score, Panik-Knopf | `SecurityScoreTest`, `ProtectionStatusTest` |
 | 7 | Homelab-Kacheln, Wake-on-LAN, Nachtmodus, Datenspar-Modus, Wochenbericht | `WakeOnLanTest` |
 
+## Geprüft (CI, bei jedem Push)
+
+- `./gradlew assembleDebug testDebugUnitTest lintDebug` – grün.
+- Go-Kern: `go vet` (android/arm64) + `go test`.
+- **Ende-zu-Ende im Android-Emulator (API 34)**: echter `ShieldVpnService`, echte DNS-Auflösung des Systems:
+  - Stufe A: eigene Blockregel greift, Selbsttest-Domain wird blockiert, erlaubte Domain wird per DoH aufgelöst,
+    Selbsttest 1–4 bestanden, Ereignisse werden gespeichert.
+  - Stufe B (Go-Kern): dasselbe plus HTTPS-Verbindung durch den Tunnel, DoH-Probe, Panik-Modus verwirft allen Verkehr
+    und lässt sich wieder beenden.
+  - Room-DAOs (Filter, Aufbewahrung, Aggregation).
+- Windows-Installer wird zur Probe gebaut.
+
+Der Emulator-Test hat einen echten Fehler gefunden, der behoben ist: In Stufe A schlug `protect()` auf dem
+noch unverbundenen DoH-Socket fehl, erlaubte Domains wurden nicht aufgelöst.
+
 ## Offen / nächste Schritte
 
-- Instrumentierte Tests (VpnService-Start/Stopp, Room-DAOs) auf Emulator in CI (SPEC §7).
+- WireGuard-Verbindung wird in CI nicht Ende-zu-Ende getestet (kein Test-Server); getestet sind Parser, UAPI-Erzeugung und Kill-Switch-Logik.
 - Detekt und ktlint laufen in CI nur informativ (noch nicht blockierend).
 - SQLCipher-Verschlüsselung der Datenbank (SPEC §4 „optional“) ist nicht umgesetzt.
 - Englische Übersetzung ist vorbereitet (`values-en`), aber nicht sprachlich geprüft.
@@ -34,4 +49,6 @@ Stand: Version 1.0.0 (2026-11-03). Alle Phasen 0–7 aus `SPEC.md` §8 sind impl
 - **Kill-Switch:** wirkt in Stufe B mit WireGuard; für vollständigen Schutz zusätzlich Android-Lockdown nutzen.
 - **DNS-Leak-Erkennung:** Heuristik (Resolver im selben Netz/ASN wie die öffentliche IP = Leak).
 - **Heim-IP:** wird beim ersten Leak-Test ohne VPN lokal gespeichert und für Test 6 genutzt.
+- **Homelab-Kacheln:** nur HTTPS (Android blockiert unverschlüsseltes HTTP standardmäßig; bewusst nicht gelockert).
+- **Release ohne R8:** das APK ist größer, verhält sich aber genau wie die getestete Debug-Version.
 - **Windows-Installer:** installiert die Android-App per ADB; Shield selbst läuft nicht unter Windows.

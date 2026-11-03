@@ -55,6 +55,15 @@ jobs:
         with:
           name: shield-debug-apk
           path: app/build/outputs/apk/debug/*.apk
+      - name: Windows installer smoke build (NSIS)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq nsis > /dev/null
+          curl -sSLo /tmp/pt.zip https://dl.google.com/android/repository/platform-tools-latest-windows.zip
+          unzip -q /tmp/pt.zip -d installer/
+          cp app/build/outputs/apk/debug/*.apk installer/Shield.apk
+          mkdir -p dist
+          makensis -V2 -DVERSION=0.0.0 -DOUTFILE="../dist/Shield-Setup-ci.exe" installer/shield-setup.nsi
+          ls -la dist/
       - name: Upload reports
         if: always()
         uses: actions/upload-artifact@v4

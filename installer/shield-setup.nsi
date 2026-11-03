@@ -34,7 +34,7 @@ VIAddVersionKey /LANG=1031 "LegalCopyright" "GPL-3.0"
 !define MUI_FINISHPAGE_SHOWREADME_TEXT "Ordner mit der APK öffnen"
 
 !insertmacro MUI_PAGE_WELCOME
-!insertmacro MUI_PAGE_LICENSE "..\LICENSE"
+!insertmacro MUI_PAGE_LICENSE "../LICENSE"
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
@@ -49,12 +49,12 @@ Section "Shield" SecMain
   File "Shield.apk"
   File "install-to-phone.cmd"
   File "LIESMICH.txt"
-  File "..\LICENSE"
+  File "../LICENSE"
   SetOutPath "$INSTDIR\platform-tools"
-  File "platform-tools\adb.exe"
-  File "platform-tools\AdbWinApi.dll"
-  File "platform-tools\AdbWinUsbApi.dll"
-  File /nonfatal "platform-tools\NOTICE.txt"
+  File "platform-tools/adb.exe"
+  File "platform-tools/AdbWinApi.dll"
+  File "platform-tools/AdbWinUsbApi.dll"
+  File /nonfatal "platform-tools/NOTICE.txt"
   SetOutPath "$INSTDIR"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   CreateDirectory "$SMPROGRAMS\Shield"
