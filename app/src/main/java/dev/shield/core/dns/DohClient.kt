@@ -90,7 +90,15 @@ class DohClient(
 
     private class ProtectedSocketFactory(private val protect: (Socket) -> Boolean) : SocketFactory() {
         private fun p(s: Socket): Socket {
-            if (!protect(s)) throw IOException("VpnService.protect failed")
+            // A fresh java.net.Socket has no file descriptor until it is bound or connected,
+            // so protect() would fail. Binding to an ephemeral port creates the descriptor.
+            if (!protect(s)) {
+                s.bind(null)
+                if (!protect(s)) {
+                    s.close()
+                    throw IOException("VpnService.protect failed")
+                }
+            }
             return s
         }
         override fun createSocket(): Socket = p(Socket())

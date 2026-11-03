@@ -84,7 +84,12 @@ class VpnEndToEndTest {
         assertTrue("selftest domain not blocked", isBlockedAnswer(lookup(unique(FilterEngine.SELFTEST_DOMAIN))))
         // allowed domain is resolved via DoH
         val ok = lookup("example.com")
-        assertTrue("example.com not resolved", ok.isNotEmpty())
+        if (ok.isEmpty()) {
+            hooks.recorder().flush()
+            val recent = hooks.database().dnsQueryDao().since(0, 20).joinToString { "${it.domain}=${it.result}/${it.rule}" }
+            val log = dev.shield.logging.ShieldLog.lines.value.takeLast(15).joinToString("\n") { "${it.tag}: ${it.message}" }
+            throw AssertionError("example.com not resolved. queries: $recent\nlog:\n$log")
+        }
         assertFalse("example.com wrongly blocked", ok.all { it.isAnyLocalAddress })
         hooks.rules().removeCustomRule("blocked-by-shield-e2e.com")
     }
