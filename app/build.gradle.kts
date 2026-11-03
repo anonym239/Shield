@@ -72,6 +72,9 @@ android {
         lintConfig = file("lint.xml")
         // The Go core AAR is built in CI; lint should not fail on its absence of sources.
         checkDependencies = false
+        textReport = true
+        textOutput = file("stdout")
+        explainIssues = false
     }
     testOptions {
         unitTests.isReturnDefaultValues = true

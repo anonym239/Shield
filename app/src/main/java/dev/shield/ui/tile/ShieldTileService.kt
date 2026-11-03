@@ -48,12 +48,18 @@ class ShieldTileService : TileService() {
                     android.app.PendingIntent.getActivity(this, 0, intent, android.app.PendingIntent.FLAG_IMMUTABLE),
                 )
             } else {
-                @Suppress("DEPRECATION")
-                startActivityAndCollapse(intent)
+                startLegacy(intent)
             }
             return
         }
         scope.launch { controller.setProtection(!running) }
+    }
+
+    @android.annotation.SuppressLint("StartActivityAndCollapseDeprecated")
+    @Suppress("DEPRECATION")
+    private fun startLegacy(intent: Intent) {
+        // Only used below Android 14, where the Intent variant is still supported.
+        startActivityAndCollapse(intent)
     }
 
     private fun update() {
