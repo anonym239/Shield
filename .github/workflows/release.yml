@@ -66,7 +66,7 @@ jobs:
           else
             echo "::warning::Kein Release-Schlüssel hinterlegt (Secret SHIELD_KEYSTORE_B64). Es wird ein einmaliger Schlüssel erzeugt – Updates über spätere Releases müssen dann neu installiert werden."
             PW=$(openssl rand -hex 16)
-            keytool -genkeypair -v -keystore "$RUNNER_TEMP/release.jks" -alias shield -keyalg RSA -keysize 4096 -validity 10000 \
+            keytool -genkeypair -v -keystore "$RUNNER_TEMP/release.jks" -alias shield -keyalg RSA -keysize 2048 -sigalg SHA256withRSA -validity 10000 \
               -storepass "$PW" -keypass "$PW" -dname "CN=Shield, O=Shield Open Source, C=DE" > /dev/null
             {
               echo "SHIELD_KEYSTORE_FILE=$RUNNER_TEMP/release.jks"
@@ -83,8 +83,11 @@ jobs:
         run: |
           ./gradlew --stacktrace testDebugUnitTest assembleRelease
           mkdir -p dist
-          cp app/build/outputs/apk/release/app-release.apk "dist/Shield-${{ steps.v.outputs.version }}.apk"
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "dist/Shield-${{ steps.v.outputs.version }}.apk" | head -5
+          V="${{ steps.v.outputs.version }}"
+          ls app/build/outputs/apk/release/
+          cp app/build/outputs/apk/release/app-universal-release.apk "dist/Shield-$V.apk"
+          cp app/build/outputs/apk/release/app-arm64-v8a-release.apk "dist/Shield-$V-arm64.apk"
+          for a in dist/*.apk; do echo "== $a"; "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify -v "$a" | grep -E "Verifies|scheme \(|DOES NOT" ; done
       - name: Build Windows installer (NSIS)
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq nsis > /dev/null
@@ -103,7 +106,8 @@ jobs:
             sed -n "/^## \[$V\]/,/^## \[/p" CHANGELOG.md | sed '1d;$d'
             echo
             echo "### Downloads"
-            echo "- **Shield-$V.apk** – Android-App (Android 10+). Auf dem Handy öffnen und installieren."
+            echo "- **Shield-$V-arm64.apk** – empfohlen für fast alle Handys (ARM64, z. B. Samsung Galaxy, Pixel). Auf dem Handy öffnen und installieren."
+            echo "- **Shield-$V.apk** – Universal-APK für alle Prozessoren (größer)."
             echo "- **Shield-Setup-$V.exe** – Windows-Installer: installiert die APK per USB (ADB) auf ein angeschlossenes Android-Handy."
             echo "- **SHA256SUMS.txt** – Prüfsummen"
             echo
@@ -117,5 +121,6 @@ jobs:
           target_commitish: ${{ github.sha }}
           files: |
             dist/Shield-${{ steps.v.outputs.version }}.apk
+            dist/Shield-${{ steps.v.outputs.version }}-arm64.apk
             dist/Shield-Setup-${{ steps.v.outputs.version }}.exe
             dist/SHA256SUMS.txt

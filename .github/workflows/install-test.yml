@@ -2,10 +2,12 @@ name: Release install test
 
 on:
   push:
-    paths: ['.github/workflows/install-test.yml', 'VERSION']
+    paths: ['.github/workflows/install-test.yml']
   workflow_dispatch:
-  release:
-    types: [published]
+  # runs after every release build (releases created with GITHUB_TOKEN do not fire "release" events)
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
 
 jobs:
   inspect:
@@ -18,13 +20,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           V="$(tr -d '[:space:]' < VERSION)"
-          gh release download "v$V" -p "Shield-$V.apk" -D dist
+          gh release download "v$V" -p "Shield-$V*.apk" -D dist
           ls -la dist
       - name: Signature, alignment, manifest
         run: |
           BT="$ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)"
-          APK=$(ls dist/*.apk)
-          echo "== apksigner"; "$BT/apksigner" verify -v "$APK" || true
+          APK=dist/Shield-$(tr -d '[:space:]' < VERSION).apk
+          for a in dist/*.apk; do echo "== apksigner $a"; "$BT/apksigner" verify -v "$a" || true; done
           echo "== zipalign 16 KB"; "$BT/zipalign" -c -P 16 -v 4 "$APK" | grep -E "lib/|Verification" || true
           echo "== badging"; "$BT/aapt2" dump badging "$APK" | head -20 || true
           echo "== native libs"; unzip -l "$APK" | grep "lib/" || true

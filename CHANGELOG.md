@@ -2,6 +2,15 @@
 
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [SemVer](https://semver.org/lang/de/).
 
+## [1.0.1] – 2026-11-03
+
+### Behoben
+- Installation auf manchen Geräten (gemeldet: Samsung, Android 16) schlug mit „App nicht installiert“ fehl.
+  APK jetzt mit Signaturschema v1+v2+v3 und RSA-2048/SHA-256 signiert, ohne unvollständigen 32-Bit-x86-Teil.
+
+### Hinzugefügt
+- Schlankes `Shield-<version>-arm64.apk` für ARM64-Handys (empfohlen) zusätzlich zum Universal-APK.
+
 ## [1.0.0] – 2026-11-03
 
 Erste Version mit allen Phasen 0–7 aus `SPEC.md`.

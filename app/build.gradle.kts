@@ -38,6 +38,10 @@ android {
                 keyAlias = signingValue("keyAlias", "SHIELD_KEY_ALIAS")
                 keyPassword = signingValue("keyPassword", "SHIELD_KEY_PASSWORD")
             }
+            // all schemes for maximum installer compatibility (some OEM installers are picky)
+            enableV1Signing = true
+            enableV2Signing = true
+            enableV3Signing = true
         }
     }
 
@@ -67,6 +71,16 @@ android {
     }
     packaging {
         resources.excludes += setOf("/META-INF/{AL2.0,LGPL2.1}", "META-INF/versions/9/OSGI-INF/MANIFEST.MF")
+        // The Go core is built for arm64, arm and x86_64 only; drop the incomplete 32-bit x86 set.
+        jniLibs.excludes += "lib/x86/**"
+    }
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86_64")
+            isUniversalApk = true
+        }
     }
     lint {
         abortOnError = true
