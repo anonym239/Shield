@@ -61,7 +61,7 @@ scripts/build-gocore.sh            # erzeugt app/libs/shieldcore.aar
 
 Die Debug-APK liegt danach in `app/build/outputs/apk/debug/`.
 
-Release-Builds entstehen in GitHub Actions (`.github/workflows/release.yml`) beim Push eines Tags `v*`.
+Release-Builds entstehen in GitHub Actions (`.github/workflows/release.yml`) beim Push eines Tags `v*` oder wenn die Datei `VERSION` geändert wird.
 Für eine stabile Signatur die Secrets `SHIELD_KEYSTORE_B64` (Base64 der `.jks`), `SHIELD_KEYSTORE_PASSWORD`,
 `SHIELD_KEY_ALIAS` und `SHIELD_KEY_PASSWORD` im Repository hinterlegen. Ohne Secrets wird ein einmaliger Schlüssel erzeugt.
 
