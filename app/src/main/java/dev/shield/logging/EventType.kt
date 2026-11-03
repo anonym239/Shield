@@ -1,0 +1,32 @@
+package dev.shield.logging
+
+/** Types of security events (table security_event). */
+enum class EventType {
+    PROTECTION_ON,
+    PROTECTION_OFF,
+    TUNNEL_ERROR,
+    TUNNEL_REVOKED,
+    SERVICE_CRASH,
+    VPN_CONNECTED,
+    VPN_DISCONNECTED,
+    KILL_SWITCH_BLOCKED,
+    SELFTEST_PASSED,
+    SELFTEST_FAILED,
+    LISTS_UPDATED,
+    LISTS_UPDATE_FAILED,
+    NETWORK_CHANGED,
+    OPEN_WIFI,
+    APP_RULE_CHANGED,
+    CUSTOM_RULE_CHANGED,
+    SETTINGS_CHANGED,
+    NETWORK_ACCESS,
+    PANIC_ON,
+    PANIC_OFF,
+    LEAK_TEST,
+    CHECK_RESULT,
+    BACKUP,
+    RETENTION,
+    ERROR,
+}
+
+enum class Severity { INFO, WARNING, CRITICAL }

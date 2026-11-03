@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- English is prepared as second language; not every string is translated yet. -->
+    <issue id="MissingTranslation" severity="warning" />
+    <!-- Needed for the firewall/tracker radar: the app must see all installed apps. -->
+    <issue id="QueryAllPackagesPermission" severity="ignore" />
+    <!-- Versions are pinned on purpose in libs.versions.toml. -->
+    <issue id="GradleDependency" severity="ignore" />
+    <issue id="NewerVersionAvailable" severity="ignore" />
+    <issue id="AndroidGradlePluginVersion" severity="ignore" />
+    <issue id="ObsoleteLintCustomCheck" severity="ignore" />
+    <!-- Local AAR of the Go core. -->
+    <issue id="UnknownNullness" severity="ignore" />
+</lint>

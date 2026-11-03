@@ -1,0 +1,16 @@
+# Detekt: build upon the default config, relaxed for Compose code.
+naming:
+  FunctionNaming:
+    ignoreAnnotated: ['Composable']
+complexity:
+  LongMethod:
+    ignoreAnnotated: ['Composable']
+  LongParameterList:
+    ignoreAnnotated: ['Composable']
+  TooManyFunctions:
+    active: false
+style:
+  MagicNumber:
+    active: false
+  WildcardImport:
+    active: true

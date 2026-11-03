@@ -1,0 +1,12 @@
+Shield - Windows-Installer
+
+Shield ist eine Android-App. Dieser Ordner enthaelt:
+  Shield.apk              die App
+  install-to-phone.cmd    installiert die App per USB (ADB) auf ein angeschlossenes Handy
+  platform-tools\         Android Platform-Tools (adb) von Google
+
+Alternative ohne PC: Shield.apk auf das Handy kopieren und dort oeffnen
+("Installation aus unbekannten Quellen" fuer den Dateimanager erlauben).
+
+Quellcode und Hilfe: https://github.com/anonym239/Shield
+Lizenz: GPL-3.0 (siehe LICENSE). Die Platform-Tools unterliegen den Google-Lizenzbedingungen (NOTICE.txt).

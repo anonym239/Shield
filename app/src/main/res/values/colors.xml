@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="shield_background">#FFF8FAF8</color>
+    <color name="status_green">#FF1E8E5A</color>
+    <color name="status_yellow">#FFC98A00</color>
+    <color name="status_red">#FFC62828</color>
+</resources>
