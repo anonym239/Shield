@@ -71,7 +71,9 @@ jobs:
             adb logcat -c
             adb install -r dist/*.apk 2>&1 | tee /tmp/install.txt; grep -q Success /tmp/install.txt || (adb logcat -d | grep -iE "PackageManager|installd|PackageInstaller" | tail -60; exit 1)
             adb shell am start -W -n io.github.anonym239.shield/dev.shield.MainActivity
-            sleep 10
+            sleep 15
+            adb logcat -d -b crash | tail -80 || true
+            adb logcat -d | grep -E "Fatal signal|DEBUG  |libc  |ActivityManager: (Process|Killing).*shield|lowmemorykiller|am_proc_died" | tail -60 || true
             adb shell pidof io.github.anonym239.shield || (adb logcat -d | grep -E "AndroidRuntime|FATAL|Shield" | tail -80; exit 1)
             adb logcat -d | grep -E "AndroidRuntime|FATAL" | tail -40 || true
             echo "App installed and running"
