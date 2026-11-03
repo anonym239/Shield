@@ -42,12 +42,13 @@ class GoBridge(
         }
     }
 
-    override fun dnsAnswered(uid: Int, query: ByteArray?, answer: ByteArray?, latencyMs: Long) {
-        if (query == null || answer == null) return
-        try {
-            resolver.onUpstreamAnswer(uid, query, answer, latencyMs)
+    override fun dnsAnswered(uid: Int, query: ByteArray?, answer: ByteArray?, latencyMs: Long): ByteArray {
+        if (query == null || answer == null) return ByteArray(0)
+        return try {
+            resolver.onUpstreamAnswer(uid, query, answer, latencyMs) ?: ByteArray(0)
         } catch (e: Exception) {
             ShieldLog.e("Bridge", "dnsAnswered failed", e)
+            ByteArray(0)
         }
     }
 

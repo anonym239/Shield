@@ -41,7 +41,8 @@ type Bridge interface {
 	FilterDns(uid int32, query []byte) []byte
 	// DnsAnswered reports an upstream answer (for logging and the cache).
 	// latencyMs < 0 means the upstream failed and answer is SERVFAIL.
-	DnsAnswered(uid int32, query []byte, answer []byte, latencyMs int64)
+	// A non-empty return value replaces the answer (e.g. CNAME cloaking blocked).
+	DnsAnswered(uid int32, query []byte, answer []byte, latencyMs int64) []byte
 	// Log writes into the Shield logging facade.
 	Log(level int32, msg string)
 }

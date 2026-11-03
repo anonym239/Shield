@@ -49,8 +49,7 @@ class DnsResolver(
         return try {
             val answer = upstream.resolve(query)
             val fixed = DnsCodec.withId(answer, q.id)
-            onUpstream(uid, q, fixed, (clock() - start).toInt())
-            fixed
+            onUpstream(uid, query, q, fixed, (clock() - start).toInt())
         } catch (e: Exception) {
             sink.record(uid, q.name, q.type, QueryResult.ERROR, e.javaClass.simpleName, null, (clock() - start).toInt())
             DnsCodec.servfail(query, q)
@@ -66,14 +65,18 @@ class DnsResolver(
         return filterParsed(uid, query, q)
     }
 
-    /** Stage B: an upstream answer arrived (latency < 0 = failed). */
-    fun onUpstreamAnswer(uid: Int, query: ByteArray, answer: ByteArray, latencyMs: Long) {
-        val q = DnsCodec.parseQuery(query) ?: return
+    /**
+     * Stage B: an upstream answer arrived (latency < 0 = failed). Returns the answer to deliver
+     * (a blocked answer if CNAME cloaking was detected) or null to keep the original.
+     */
+    fun onUpstreamAnswer(uid: Int, query: ByteArray, answer: ByteArray, latencyMs: Long): ByteArray? {
+        val q = DnsCodec.parseQuery(query) ?: return null
         if (latencyMs < 0) {
             sink.record(uid, q.name, q.type, QueryResult.ERROR, "Upstream", null, 0)
-        } else {
-            onUpstream(uid, q, answer, latencyMs.toInt())
+            return null
         }
+        val result = onUpstream(uid, query, q, answer, latencyMs.toInt())
+        return if (result === answer) null else result
     }
 
     private fun filterParsed(uid: Int, query: ByteArray, q: DnsQuery): ByteArray? {
@@ -93,12 +96,23 @@ class DnsResolver(
         return null
     }
 
-    private fun onUpstream(uid: Int, q: DnsQuery, answer: ByteArray, latency: Int) {
+    /** Returns the answer to deliver: the upstream answer, or a blocked answer for CNAME cloaking. */
+    private fun onUpstream(uid: Int, query: ByteArray, q: DnsQuery, answer: ByteArray, latency: Int): ByteArray {
+        // CNAME cloaking: a harmless looking name that points to a blocked tracker domain.
+        for (target in DnsCodec.cnameTargets(answer)) {
+            val d = filter.decide(target)
+            if (d.blocked) {
+                val blocked = DnsCodec.blockedResponse(query, q, zeroIp())
+                sink.record(uid, q.name, q.type, QueryResult.BLOCKED, "CNAME → $target (${d.rule})", d.category, latency)
+                return blocked
+            }
+        }
         cache.put(q.name, q.type, answer)
         val rcode = DnsCodec.rcode(answer)
         val result = if (rcode == DnsCodec.RCODE_SERVFAIL) QueryResult.ERROR else QueryResult.ALLOWED
         val decision = filter.decide(q.name)
         sink.record(uid, q.name, q.type, result, ruleText(decision.reason, decision.rule, false), null, latency)
+        return answer
     }
 
     private fun ruleText(reason: DecisionReason, rule: String?, cached: Boolean): String? {

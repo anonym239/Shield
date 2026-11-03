@@ -6,7 +6,9 @@ import dev.shield.core.filter.FilterEngine
 import dev.shield.core.filter.ListCategory
 import dev.shield.core.filter.LoadedList
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -81,5 +83,56 @@ class DnsResolverTest {
         assertNotNull(resolver.filterOnly(1, DnsCodec.buildQuery(1, "ads.com", 1)))
         filter.setCustomRules(listOf(CustomRule("ads.com", allow = true)))
         assertNull(resolver.filterOnly(1, DnsCodec.buildQuery(1, "ads.com", 1)))
+    }
+}
+
+/** CNAME cloaking: first-party looking name -> CNAME to a blocked tracker. */
+class CnameCloakingTest {
+    private fun cnameAnswer(query: ByteArray, target: String): ByteArray {
+        val q = DnsCodec.parseQuery(query)!!
+        val head = query.copyOf(q.questionEnd)
+        DnsCodec.put16(head, 2, 0x8180)
+        DnsCodec.put16(head, 6, 1)
+        val labels = target.split('.')
+        val rdata = ByteArray(labels.sumOf { it.length + 1 } + 1)
+        var i = 0
+        labels.forEach { l ->
+            rdata[i++] = l.length.toByte()
+            l.forEach { c -> rdata[i++] = c.code.toByte() }
+        }
+        val rr = ByteArray(12)
+        rr[0] = 0xC0.toByte(); rr[1] = 0x0C
+        DnsCodec.put16(rr, 2, DnsCodec.TYPE_CNAME)
+        DnsCodec.put16(rr, 4, 1)
+        rr[9] = 60
+        DnsCodec.put16(rr, 10, rdata.size)
+        return head + rr + rdata
+    }
+
+    @Test
+    fun readsCnameTargets() {
+        val q = DnsCodec.buildQuery(1, "metrics.shop.de", 1)
+        assertEquals(listOf("tracker.ads.com"), DnsCodec.cnameTargets(cnameAnswer(q, "tracker.ads.com")))
+        assertEquals(emptyList<String>(), DnsCodec.cnameTargets(byteArrayOf(1, 2, 3)))
+    }
+
+    @Test
+    fun blocksCloakedTracker() = runBlocking {
+        val records = mutableListOf<String?>()
+        val filter = FilterEngine().apply {
+            setLists(listOf(LoadedList("t", "Liste", ListCategory.TRACKING, BlocklistParser.parse("||ads.com^"))))
+        }
+        val resolver = DnsResolver(filter, DnsCache(), { _, _, _, _, rule, _, _ -> records += rule }, { null }, { true })
+        val q = DnsCodec.buildQuery(9, "metrics.shop.de", 1)
+        val up = object : DnsUpstream {
+            override suspend fun resolve(query: ByteArray) = cnameAnswer(query, "x.ads.com")
+        }
+        val r = resolver.resolve(1, q, up)!!
+        assertEquals(1, DnsCodec.u16(r, 6))
+        assertArrayEquals(ByteArray(4), r.copyOfRange(r.size - 4, r.size))
+        assertTrue(records.single()!!.startsWith("CNAME"))
+        // stage B path returns a replacement
+        assertNotNull(resolver.onUpstreamAnswer(1, q, cnameAnswer(q, "x.ads.com"), 5))
+        assertNull(resolver.onUpstreamAnswer(1, q, cnameAnswer(q, "cdn.ok.net"), 5))
     }
 }

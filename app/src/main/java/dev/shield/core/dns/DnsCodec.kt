@@ -14,6 +14,7 @@ data class DnsQuery(
 /** Minimal DNS wire format codec (RFC 1035) for queries and synthetic answers. */
 object DnsCodec {
     const val TYPE_A = 1
+    const val TYPE_CNAME = 5
     const val TYPE_AAAA = 28
     const val TYPE_HTTPS = 65
     const val RCODE_NOERROR = 0
@@ -116,6 +117,59 @@ object DnsCodec {
             if (i > r.size) return null
         }
         return if (min == Int.MAX_VALUE) null else min
+    }
+
+    /**
+     * Names that the answer section points to via CNAME (for CNAME-cloaking detection).
+     * Handles name compression; returns an empty list on malformed input.
+     */
+    fun cnameTargets(r: ByteArray): List<String> {
+        if (r.size < HEADER) return emptyList()
+        val qd = u16(r, 4)
+        val an = u16(r, 6)
+        var i = HEADER
+        repeat(qd) {
+            i = skipName(r, i) ?: return emptyList()
+            i += 4
+        }
+        val out = ArrayList<String>()
+        repeat(an) {
+            i = skipName(r, i) ?: return out
+            if (i + 10 > r.size) return out
+            val type = u16(r, i)
+            val rdl = u16(r, i + 8)
+            val rdStart = i + 10
+            if (rdStart + rdl > r.size) return out
+            if (type == TYPE_CNAME) readName(r, rdStart)?.let { out.add(it) }
+            i = rdStart + rdl
+        }
+        return out
+    }
+
+    /** Reads a (possibly compressed) name; null if malformed or looping. */
+    fun readName(b: ByteArray, start: Int): String? {
+        val sb = StringBuilder()
+        var i = start
+        var jumps = 0
+        while (true) {
+            if (i >= b.size) return null
+            val l = b[i].toInt() and 0xFF
+            when {
+                l == 0 -> return sb.toString().lowercase()
+                l and 0xC0 == 0xC0 -> {
+                    if (i + 1 >= b.size || ++jumps > 16) return null
+                    i = ((l and 0x3F) shl 8) or (b[i + 1].toInt() and 0xFF)
+                }
+                l and 0xC0 != 0 -> return null
+                else -> {
+                    if (i + 1 + l > b.size) return null
+                    if (sb.isNotEmpty()) sb.append('.')
+                    for (k in 1..l) sb.append((b[i + k].toInt() and 0xFF).toChar())
+                    if (sb.length > 253) return null
+                    i += l + 1
+                }
+            }
+        }
     }
 
     private fun skipName(b: ByteArray, start: Int): Int? {

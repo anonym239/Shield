@@ -275,6 +275,12 @@ func (t *Tunnel) wgBlocked() bool {
 	return t.killSwitch.Load() && !t.WireGuardConnected()
 }
 
+// isVirtualDNS reports whether addr is one of the resolver addresses announced to Android.
+func (t *Tunnel) isVirtualDNS(addr netip.Addr) bool {
+	s := addr.String()
+	return s == t.cfg.VirtualDNS4 || (t.cfg.VirtualDNS6 != "" && strings.EqualFold(s, t.cfg.VirtualDNS6))
+}
+
 func addrString(a tcpip.Address) string {
 	ip, ok := netip.AddrFromSlice(a.AsSlice())
 	if !ok {
@@ -380,7 +386,8 @@ func (t *Tunnel) handleTCP(r *tcp.ForwarderRequest) {
 		go t.serveDNSTCP(gonet.NewTCPConn(&wq, ep), uid)
 		return
 	}
-	if !t.allow(ProtoTCP, uid, dst.Addr().String(), dst.Port()) {
+	// The virtual resolver only speaks plain DNS on port 53 (no DoT bypass via 853).
+	if t.isVirtualDNS(dst.Addr()) || !t.allow(ProtoTCP, uid, dst.Addr().String(), dst.Port()) {
 		r.Complete(true) // RST
 		return
 	}
@@ -446,7 +453,7 @@ func (t *Tunnel) handleUDP(r *udp.ForwarderRequest) {
 		return
 	}
 	uid := t.uidFor(ProtoUDP, id)
-	if !isDNS(id.LocalPort) && !t.allow(ProtoUDP, uid, dst.Addr().String(), dst.Port()) {
+	if !isDNS(id.LocalPort) && (t.isVirtualDNS(dst.Addr()) || !t.allow(ProtoUDP, uid, dst.Addr().String(), dst.Port())) {
 		return
 	}
 	var wq waiter.Queue
@@ -537,7 +544,9 @@ func (t *Tunnel) resolve(uid int32, q []byte) []byte {
 	}
 	// keep the original transaction id
 	ans[0], ans[1] = q[0], q[1]
-	t.bridge.DnsAnswered(uid, q, ans, time.Since(start).Milliseconds())
+	if repl := t.bridge.DnsAnswered(uid, q, ans, time.Since(start).Milliseconds()); len(repl) >= 12 {
+		return repl
+	}
 	return ans
 }
 
