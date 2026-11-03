@@ -1,0 +1,77 @@
+name: Release install test
+
+on:
+  push:
+    paths: ['.github/workflows/install-test.yml', 'VERSION']
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  inspect:
+    name: Inspect release APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download release APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V="$(tr -d '[:space:]' < VERSION)"
+          gh release download "v$V" -p "Shield-$V.apk" -D dist
+          ls -la dist
+      - name: Signature, alignment, manifest
+        run: |
+          BT="$ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)"
+          APK=$(ls dist/*.apk)
+          echo "== apksigner"; "$BT/apksigner" verify -v "$APK" || true
+          echo "== zipalign 16 KB"; "$BT/zipalign" -c -P 16 -v 4 "$APK" | grep -E "lib/|Verification" || true
+          echo "== badging"; "$BT/aapt2" dump badging "$APK" | head -20 || true
+          echo "== native libs"; unzip -l "$APK" | grep "lib/" || true
+          echo "== ELF alignment"
+          mkdir -p /tmp/x && unzip -q -o "$APK" 'lib/*' -d /tmp/x
+          for so in $(find /tmp/x -name '*.so'); do echo "$so: $(readelf -lW $so | awk '/LOAD/{print $NF}' | sort -u | tr '\n' ' ')"; done
+
+  install:
+    name: Install + start (API ${{ matrix.api }} ${{ matrix.target }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api: 34
+            target: google_apis
+          - api: 35
+            target: google_apis_ps16k
+          - api: 36
+            target: google_apis
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download release APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V="$(tr -d '[:space:]' < VERSION)"
+          gh release download "v$V" -p "Shield-$V.apk" -D dist
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install and launch on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          target: ${{ matrix.target }}
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            adb shell getconf PAGE_SIZE
+            adb logcat -c
+            adb install -r dist/*.apk 2>&1 | tee /tmp/install.txt; grep -q Success /tmp/install.txt || (adb logcat -d | grep -iE "PackageManager|installd|PackageInstaller" | tail -60; exit 1)
+            adb shell am start -W -n io.github.anonym239.shield/dev.shield.MainActivity
+            sleep 10
+            adb shell pidof io.github.anonym239.shield || (adb logcat -d | grep -E "AndroidRuntime|FATAL|Shield" | tail -80; exit 1)
+            adb logcat -d | grep -E "AndroidRuntime|FATAL" | tail -40 || true
+            echo "App installed and running"
