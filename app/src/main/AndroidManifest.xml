@@ -59,6 +59,7 @@
             android:name=".core.vpn.ShieldVpnService"
             android:exported="false"
             android:foregroundServiceType="systemExempted"
+            tools:ignore="ForegroundServicePermission"
             android:permission="android.permission.BIND_VPN_SERVICE">
             <intent-filter>
                 <action android:name="android.net.VpnService" />
