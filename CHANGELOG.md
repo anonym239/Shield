@@ -2,6 +2,12 @@
 
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [SemVer](https://semver.org/lang/de/).
 
+## [1.1.5] – 2026-11-04
+
+### Behoben
+- Kein doppelter Listen-Download mehr beim Start: Wartet eine zweite Anfrage hinter einem gerade beendeten Download
+  derselben Listen, wird sie übersprungen (spart Datenvolumen und Speicher; Android).
+
 ## [1.1.4] – 2026-11-04
 
 ### Behoben

@@ -1,6 +1,6 @@
 # Status
 
-Stand: Version 1.1.4 (2026-11-04). Alle Phasen 0–7 aus `SPEC.md` §8 sind implementiert, dazu Shield für Windows,
+Stand: Version 1.1.5 (2026-11-04). Alle Phasen 0–7 aus `SPEC.md` §8 sind implementiert, dazu Shield für Windows,
 Schutzstufen, automatischer Selbsttest mit Selbstheilung, Ruhemodus und optionaler KI-Assistent.
 
 ## Fertig

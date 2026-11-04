@@ -54,6 +54,9 @@ class BlocklistRepository @Inject constructor(
     private val mutex = Mutex()
     /** Serialises engine reloads; never held during network I/O, so a new level applies at once. */
     private val reloadMutex = Mutex()
+    /** Selection and time of the last finished download, to coalesce requests that queued up behind it. */
+    private var lastRun: Pair<Set<String>, Long>? = null
+    private var lastOk = false
     private val _state = MutableStateFlow(BlocklistState())
     val state: StateFlow<BlocklistState> = _state.asStateFlow()
 
@@ -63,8 +66,10 @@ class BlocklistRepository @Inject constructor(
     /** Downloads all enabled lists (user action or 24 h worker) and reloads the engine. */
     suspend fun update(force: Boolean = false): Boolean = mutex.withLock {
         withContext(Dispatchers.IO) {
-            _state.value = _state.value.copy(updating = true)
             val enabled = settings.current().enabledLists
+            // a non-forced request that waited behind an identical download needs no second round of network I/O
+            if (!force && shouldSkip(lastRun, enabled, System.currentTimeMillis())) return@withContext lastOk
+            _state.value = _state.value.copy(updating = true)
             val meta = readMeta()
             var ok = true
             for (src in SOURCES.filter { it.id in enabled && !it.url.startsWith(ASSET) }) {
@@ -115,6 +120,8 @@ class BlocklistRepository @Inject constructor(
                 events.info(EventType.LISTS_UPDATED, "Blocklisten aktualisiert: ${engine.ruleCount} Regeln")
             }
             _state.value = _state.value.copy(updating = false)
+            lastRun = enabled to System.currentTimeMillis()
+            lastOk = ok
             ok
         }
     }
@@ -169,6 +176,12 @@ class BlocklistRepository @Inject constructor(
     }
 
     companion object {
+        /** Window in which a repeated non-forced download of the same selection is skipped. */
+        const val COALESCE_MS = 60_000L
+
+        fun shouldSkip(last: Pair<Set<String>, Long>?, enabled: Set<String>, now: Long): Boolean =
+            last != null && last.first == enabled && now - last.second in 0 until COALESCE_MS
+
         /** Lists shipped inside the APK (work offline, no download). */
         const val ASSET = "asset:"
         private const val HAGEZI = "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock"
