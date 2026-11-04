@@ -85,9 +85,10 @@ class VpnEndToEndTest {
         assertTrue("selftest domain not blocked", isBlockedAnswer(lookup(unique(FilterEngine.SELFTEST_DOMAIN))))
         // allowed domain is resolved via DoH
         var ok = lookup("example.com")
-        for (attempt in 1..2) { // absorbs short network hiccups of the CI emulator
+        // absorbs network outages of the CI emulator (seen: both DoH servers unreachable for ~1 min)
+        for (attempt in 1..12) {
             if (ok.isNotEmpty()) break
-            delay(2000)
+            delay(5000)
             ok = lookup("example.com")
         }
         if (ok.isEmpty()) {
