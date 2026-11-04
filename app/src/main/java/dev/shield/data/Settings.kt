@@ -86,6 +86,14 @@ data class Settings(
         } else {
             upstream.bootstrap
         }
+    /** Second encrypted upstream used when the chosen one fails (none for a custom server). */
+    val fallbackUpstream: DohUpstream?
+        get() = when (upstream) {
+            DohUpstream.CUSTOM -> null
+            DohUpstream.CLOUDFLARE -> DohUpstream.QUAD9
+            else -> DohUpstream.CLOUDFLARE
+        }
+
     /** MAXIMUM always uses the full tunnel (packet firewall, DoT blocking). */
     val effectiveTunnelMode: TunnelMode get() = if (protectionLevel == ProtectionLevel.MAXIMUM) TunnelMode.FULL else tunnelMode
 

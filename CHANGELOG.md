@@ -2,6 +2,13 @@
 
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [SemVer](https://semver.org/lang/de/).
 
+## [1.1.2] – 2026-11-04
+
+### Hinzugefügt
+- Ausfallsicheres verschlüsseltes DNS: Ist der gewählte DoH-Server gestört, nutzt Shield automatisch einen zweiten
+  verschlüsselten Server (Quad9 ↔ Cloudflare) und prüft den ersten nach 60 s erneut. Nie Rückfall auf unverschlüsseltes
+  DNS; bei einem eigenen Server gibt es bewusst keinen Ausweichserver. Gilt für Android (Stufe A und B) und Windows.
+
 ## [1.1.1] – 2026-11-04
 
 ### Behoben

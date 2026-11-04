@@ -55,6 +55,10 @@ type Config struct {
 	DohURL string
 	// DohBootstrap is a comma separated list of IPs for the DoH host.
 	DohBootstrap string
+	// DohFallbackURL / DohFallbackBootstrap: second encrypted upstream used
+	// when the primary fails (empty = none). Never plaintext.
+	DohFallbackURL       string
+	DohFallbackBootstrap string
 	// WgUapi is the wireguard-go UAPI configuration (empty = no WireGuard).
 	WgUapi string
 	// WgAddresses is a comma separated list of interface addresses (CIDR or IP).

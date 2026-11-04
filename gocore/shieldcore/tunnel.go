@@ -42,7 +42,10 @@ type Tunnel struct {
 	bridge Bridge
 	stack  *stack.Stack
 	doh    *dohClient
+	dohFB  *dohClient
 	wg     *wgTunnel
+
+	primaryDownUntil atomic.Int64
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -88,6 +91,11 @@ func newTunnel(cfg *Config, bridge Bridge) (*Tunnel, error) {
 		return nil, err
 	}
 	t.doh = doh
+	if cfg.DohFallbackURL != "" {
+		if fb, err := newDohClient(cfg.DohFallbackURL, cfg.DohFallbackBootstrap, t.dialUpstream); err == nil {
+			t.dohFB = fb
+		}
+	}
 
 	s := stack.New(stack.Options{
 		NetworkProtocols:   []stack.NetworkProtocolFactory{ipv4.NewProtocol, ipv6.NewProtocol},
@@ -166,6 +174,9 @@ func (t *Tunnel) Close() {
 	}
 	if t.doh != nil {
 		t.doh.close()
+	}
+	if t.dohFB != nil {
+		t.dohFB.close()
 	}
 	mu.Lock()
 	if current == t {
@@ -539,7 +550,7 @@ func (t *Tunnel) resolve(uid int32, q []byte) []byte {
 	start := time.Now()
 	ctx, cancel := context.WithTimeout(t.ctx, 10*time.Second)
 	defer cancel()
-	ans, err := t.doh.query(ctx, q)
+	ans, err := t.upstreamQuery(ctx, q)
 	if err != nil || len(ans) < 12 {
 		t.log(LevelWarn, "DoH upstream failed: "+errString(err))
 		sf := servfail(q)
@@ -612,5 +623,26 @@ func (t *Tunnel) ProbeDns(q []byte) ([]byte, error) {
 	}
 	ctx, cancel := context.WithTimeout(t.ctx, 10*time.Second)
 	defer cancel()
-	return t.doh.query(ctx, q)
+	return t.upstreamQuery(ctx, q)
+}
+
+// upstreamQuery asks the primary DoH server and falls back to the second
+// encrypted server; a failing primary is skipped for 60 s.
+func (t *Tunnel) upstreamQuery(ctx context.Context, q []byte) ([]byte, error) {
+	if t.dohFB == nil {
+		return t.doh.query(ctx, q)
+	}
+	if time.Now().UnixMilli() >= t.primaryDownUntil.Load() {
+		ans, err := t.doh.query(ctx, q)
+		if err == nil {
+			return ans, nil
+		}
+		t.primaryDownUntil.Store(time.Now().Add(60 * time.Second).UnixMilli())
+		t.log(LevelWarn, "DoH primary failed, using fallback: "+err.Error())
+	}
+	ans, err := t.dohFB.query(ctx, q)
+	if err != nil {
+		t.primaryDownUntil.Store(0)
+	}
+	return ans, err
 }

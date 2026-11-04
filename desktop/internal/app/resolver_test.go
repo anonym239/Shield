@@ -75,3 +75,18 @@ func TestListUpdateQueuedNotLost(t *testing.T) {
 		t.Fatal("level not applied")
 	}
 }
+
+func TestFallbackChoice(t *testing.T) {
+	s := DefaultSettings()
+	if f := s.Fallback(); f == nil || f.ID != "CLOUDFLARE" {
+		t.Fatal("quad9 -> cloudflare")
+	}
+	s.Upstream = "CLOUDFLARE"
+	if f := s.Fallback(); f == nil || f.ID != "QUAD9" {
+		t.Fatal("cloudflare -> quad9")
+	}
+	s.Upstream = "CUSTOM"
+	if s.Fallback() != nil {
+		t.Fatal("custom server must not silently fall back")
+	}
+}

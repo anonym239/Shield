@@ -205,7 +205,11 @@ func (e *Engine) Start() error {
 		e.fail(err)
 		return err
 	}
-	e.res.setUpstream(up)
+	var fb *doh
+	if f := s.Fallback(); f != nil {
+		fb, _ = newDoH(f.URL, f.Bootstrap)
+	}
+	e.res.setUpstream(up, fb)
 	ctx, cancel := context.WithCancel(context.Background())
 	if err := e.res.listen(ctx, []string{"127.0.0.1:53", "[::1]:53"}); err != nil {
 		cancel()

@@ -137,3 +137,20 @@ func (st *settingsStore) update(fn func(Settings) Settings) Settings {
 	}
 	return st.s
 }
+
+// Fallback returns a second encrypted upstream (none for a custom server).
+func (s Settings) Fallback() *Upstream {
+	if s.Upstream == "CUSTOM" {
+		return nil
+	}
+	id := "CLOUDFLARE"
+	if s.Upstream == "CLOUDFLARE" {
+		id = "QUAD9"
+	}
+	for i := range Upstreams {
+		if Upstreams[i].ID == id {
+			return &Upstreams[i]
+		}
+	}
+	return nil
+}

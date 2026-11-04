@@ -13,6 +13,7 @@ import dev.shield.core.dns.DnsCache
 import dev.shield.core.dns.DnsCodec
 import dev.shield.core.dns.DnsResolver
 import dev.shield.core.dns.DohClient
+import dev.shield.core.dns.FailoverUpstream
 import dev.shield.core.firewall.FirewallEngine
 import dev.shield.core.filter.FilterEngine
 import dev.shield.core.wireguard.WgConfig
@@ -74,6 +75,8 @@ class ShieldVpnService : VpnService() {
     @Volatile private var tunnel: RunningTunnel? = null
     @Volatile private var goTunnel: shieldcore.Tunnel? = null
     @Volatile private var doh: DohClient? = null
+    @Volatile private var dohFallback: DohClient? = null
+    @Volatile private var chain: dev.shield.core.dns.DnsUpstream? = null
     @Volatile private var spec: Spec? = null
     @Volatile private var userStopped = false
     private var monitorJob: Job? = null
@@ -86,6 +89,7 @@ class ShieldVpnService : VpnService() {
         val bootstrap: List<String>,
         val wgProfileId: String?,
         val blockDnsBypass: Boolean,
+        val fallback: DohUpstream?,
     )
 
     override fun onCreate() {
@@ -174,7 +178,7 @@ class ShieldVpnService : VpnService() {
         if (bootstrap.isEmpty() && s.upstream == DohUpstream.CUSTOM) {
             bootstrap = resolveOutside(hostOf(s.dohUrl))
         }
-        return Spec(kind, s.dohUrl, bootstrap, profileId, s.protectionLevel == ProtectionLevel.MAXIMUM)
+        return Spec(kind, s.dohUrl, bootstrap, profileId, s.protectionLevel == ProtectionLevel.MAXIMUM, s.fallbackUpstream)
     }
 
     private suspend fun reconfigure(force: Boolean) = mutex.withLock {
@@ -229,8 +233,12 @@ class ShieldVpnService : VpnService() {
             .addDnsServer(DNS6)
         val pfd = b.establish() ?: throw IllegalStateException("VPN-Berechtigung fehlt")
         val client = DohClient(sp.dohUrl, sp.bootstrap) { s -> protect(s) }
+        val fallbackClient = sp.fallback?.let { f -> DohClient(f.url, f.bootstrap) { s -> protect(s) } }
         doh = client
-        tunnel = DnsOnlyTunnel(pfd, resolver, client, { pkt ->
+        dohFallback = fallbackClient
+        val upstreamChain = FailoverUpstream(client, fallbackClient)
+        chain = upstreamChain
+        tunnel = DnsOnlyTunnel(pfd, resolver, upstreamChain, { pkt ->
             try {
                 cm.getConnectionOwnerUid(
                     OsConstants.IPPROTO_UDP,
@@ -273,6 +281,8 @@ class ShieldVpnService : VpnService() {
             setMtu(MTU)
             setDohURL(sp.dohUrl)
             setDohBootstrap(sp.bootstrap.joinToString(","))
+            setDohFallbackURL(sp.fallback?.url ?: "")
+            setDohFallbackBootstrap(sp.fallback?.bootstrap?.joinToString(",") ?: "")
             setWgUapi(uapi)
             setWgAddresses(wgCfg?.iface?.addresses?.joinToString(",") ?: "")
             setWgMtu(wgCfg?.iface?.mtu ?: 1280)
@@ -396,7 +406,7 @@ class ShieldVpnService : VpnService() {
         val q = DnsCodec.buildQuery((0..0xFFFF).random(), PROBE_DOMAIN, DnsCodec.TYPE_A)
         val start = System.currentTimeMillis()
         val answer = goTunnel?.let { withContext(Dispatchers.IO) { it.probeDns(q) } }
-            ?: doh?.resolve(q)
+            ?: chain?.resolve(q)
             ?: throw IllegalStateException("Kein Upstream aktiv")
         if (DnsCodec.rcode(answer) != DnsCodec.RCODE_NOERROR) throw IllegalStateException("Upstream-Antwort ${DnsCodec.rcode(answer)}")
         System.currentTimeMillis() - start
@@ -410,6 +420,9 @@ class ShieldVpnService : VpnService() {
         goTunnel = null
         doh?.shutdown()
         doh = null
+        dohFallback?.shutdown()
+        dohFallback = null
+        chain = null
         spec = null
         cache.clear()
     }

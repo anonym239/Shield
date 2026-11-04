@@ -43,6 +43,8 @@ type resolver struct {
 
 	mu       sync.Mutex
 	upstream *doh
+	fallback *doh
+	downTill time.Time // primary skipped until then
 	ring     []QueryEntry
 	hours    map[int64]*HourStat
 	blockedD map[string]int64 // today's blocked domains (top list)
@@ -92,15 +94,48 @@ func typeName(t uint16) string {
 	return "TYPE"
 }
 
-func (r *resolver) setUpstream(d *doh) {
+func (r *resolver) setUpstream(d, fallback *doh) {
 	r.mu.Lock()
-	old := r.upstream
-	r.upstream = d
+	old, oldFB := r.upstream, r.fallback
+	r.upstream, r.fallback, r.downTill = d, fallback, time.Time{}
 	r.mu.Unlock()
 	if old != nil {
 		old.close()
 	}
+	if oldFB != nil {
+		oldFB.close()
+	}
 	r.cache.Clear()
+}
+
+// query asks the primary DoH server, falling back to the second encrypted server.
+func (r *resolver) query(ctx context.Context, q []byte) ([]byte, error) {
+	r.mu.Lock()
+	up, fb, down := r.upstream, r.fallback, r.downTill
+	r.mu.Unlock()
+	if up == nil {
+		return nil, errors.New("kein Upstream")
+	}
+	if fb == nil {
+		return up.query(ctx, q)
+	}
+	if time.Now().After(down) {
+		ans, err := up.query(ctx, q)
+		if err == nil {
+			return ans, nil
+		}
+		r.mu.Lock()
+		r.downTill = time.Now().Add(60 * time.Second)
+		r.mu.Unlock()
+		logf("DoH-Hauptserver gestört, nutze Ausweichserver: %v", err)
+	}
+	ans, err := fb.query(ctx, q)
+	if err != nil {
+		r.mu.Lock()
+		r.downTill = time.Time{}
+		r.mu.Unlock()
+	}
+	return ans, err
 }
 
 func (r *resolver) record(name string, typ uint16, result, rule string, cat filter.Category, latency int64) {
@@ -158,15 +193,8 @@ func (r *resolver) resolve(ctx context.Context, q []byte) []byte {
 		r.record(p.Name, p.Type, "ALLOWED", "Cache", "", 0)
 		return c
 	}
-	r.mu.Lock()
-	up := r.upstream
-	r.mu.Unlock()
-	if up == nil {
-		r.record(p.Name, p.Type, "ERROR", "kein Upstream", "", 0)
-		return dnsx.Servfail(q, p)
-	}
 	start := time.Now()
-	ans, err := up.query(ctx, q)
+	ans, err := r.query(ctx, q)
 	lat := time.Since(start).Milliseconds()
 	if err != nil {
 		r.record(p.Name, p.Type, "ERROR", err.Error(), "", lat)
@@ -282,14 +310,8 @@ func (r *resolver) serveTCP(ctx context.Context, ln net.Listener) {
 
 // probe sends a query directly to the upstream (self-test 4).
 func (r *resolver) probe(ctx context.Context) (int64, error) {
-	r.mu.Lock()
-	up := r.upstream
-	r.mu.Unlock()
-	if up == nil {
-		return 0, errors.New("kein Upstream")
-	}
 	start := time.Now()
-	ans, err := up.query(ctx, dnsx.BuildQuery(uint16(time.Now().UnixNano()), "example.com", dnsx.TypeA))
+	ans, err := r.query(ctx, dnsx.BuildQuery(uint16(time.Now().UnixNano()), "example.com", dnsx.TypeA))
 	if err != nil {
 		return 0, err
 	}
