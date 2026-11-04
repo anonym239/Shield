@@ -18,6 +18,8 @@ class ShieldApp : Application(), Configuration.Provider {
     @Inject lateinit var crashGuard: CrashGuard
     @Inject lateinit var schedules: Schedules
     @Inject lateinit var ruleSync: RuleSync
+    @Inject lateinit var autoSelfTest: dev.shield.core.checks.AutoSelfTest
+    @Inject lateinit var quietSync: dev.shield.ui.common.QuietSync
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
@@ -28,6 +30,8 @@ class ShieldApp : Application(), Configuration.Provider {
         Notifications.createChannels(this)
         crashGuard.install()
         ruleSync.start()
+        autoSelfTest.start()
+        quietSync.start()
         schedules.ensureScheduled()
         ShieldLog.i("App", "Shield ${BuildConfig.VERSION_NAME} gestartet")
     }

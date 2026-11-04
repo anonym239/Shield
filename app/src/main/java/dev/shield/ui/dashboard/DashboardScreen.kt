@@ -7,7 +7,21 @@ import android.app.Activity
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.PowerSettingsNew
+import dev.shield.data.ProtectionLevel
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -42,7 +56,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -114,7 +127,7 @@ fun DashboardScreen(
     }
     val toggle: (Boolean) -> Unit = { on ->
         if (on) {
-            if (Build.VERSION.SDK_INT >= 33) notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            if (Build.VERSION.SDK_INT >= 33 && !settings.quietMode) notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
             val intent = vm.controller.permissionIntent()
             if (intent != null) vpnPermission.launch(intent) else vm.setProtection(true)
         } else {
@@ -128,28 +141,24 @@ fun DashboardScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(28.dp))
-        StatusRing(level, tunnel)
-        Spacer(Modifier.height(8.dp))
-        overview?.status?.reasons?.firstOrNull()?.let { reason ->
-            Text(
-                stringResource(reasonText(reason)),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Spacer(Modifier.height(16.dp))
         val on = settings.protectionEnabled && tunnel.phase != TunnelPhase.STOPPED
-        Switch(
-            checked = on,
-            onCheckedChange = toggle,
-            modifier = Modifier
-                .size(width = 88.dp, height = 56.dp)
-                .semantics {
-                    contentDescription = ctx.getString(R.string.cd_protection_switch)
-                    stateDescription = ctx.getString(if (on) R.string.on else R.string.off)
-                },
+        val reasons = overview?.status?.reasons.orEmpty()
+        val checking = on && (tunnel.phase == TunnelPhase.STARTING || testing || StatusReason.SELFTEST_PENDING in reasons)
+        PowerRing(level = level, on = on, checking = checking, panic = tunnel.panic, onToggle = { toggle(!on) })
+        Spacer(Modifier.height(12.dp))
+        val hint = when {
+            !on -> stringResource(R.string.tap_to_enable)
+            checking -> stringResource(R.string.reason_selftest_pending)
+            else -> reasons.firstOrNull()?.let { stringResource(reasonText(it)) } ?: stringResource(R.string.tap_to_disable)
+        }
+        Text(hint, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            stringResource(levelName(settings.protectionLevel)),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(top = 4.dp).clickable { onOpenSettings(Routes.PROTECTION) }.padding(8.dp),
         )
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(20.dp))
 
         // 2x2 protection layer cards
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -240,6 +249,11 @@ fun DashboardScreen(
             o.score.topFindings.forEach { f -> RecommendationRow(f, vm, onOpenSettings) }
         }
 
+        val ai by vm.aiVerdict.collectAsStateWithLifecycle()
+        if (settings.aiEnabled) ai?.let {
+            Spacer(Modifier.height(12.dp))
+            dev.shield.ui.settings.AiVerdictCard(it)
+        }
         Spacer(Modifier.height(28.dp))
         if (tunnel.running) {
             OutlinedButton(
@@ -276,29 +290,77 @@ fun DashboardScreen(
 }
 
 @Composable
-private fun StatusRing(level: StatusLevel, tunnel: TunnelState) {
-    val color = LocalStatusColors.current.of(level)
+private fun PowerRing(level: StatusLevel, on: Boolean, checking: Boolean, panic: Boolean, onToggle: () -> Unit) {
+    val ctx = LocalContext.current
+    val colors = LocalStatusColors.current
+    val target = when {
+        !on -> MaterialTheme.colorScheme.outline
+        checking -> MaterialTheme.colorScheme.primary
+        else -> colors.of(level)
+    }
+    val ringColor by animateColorAsState(target, tween(600), label = "ring")
     val track = MaterialTheme.colorScheme.surfaceContainerHigh
-    Box(Modifier.size(220.dp), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize()) {
-            val w = 14.dp.toPx()
+    val inf = rememberInfiniteTransition(label = "power")
+    val sweep by inf.animateFloat(0f, 360f, infiniteRepeatable(tween(1400, easing = LinearEasing)), label = "sweep")
+    val breathe by inf.animateFloat(0.92f, 1f, infiniteRepeatable(tween(1800), RepeatMode.Reverse), label = "breathe")
+    val glow = if (on && !checking) breathe else 1f
+    val stateText = when {
+        panic -> stringResource(R.string.status_panic)
+        !on -> stringResource(R.string.off)
+        checking -> stringResource(R.string.status_checking)
+        else -> statusText(level)
+    }
+    Box(
+        Modifier
+            .size(236.dp)
+            .clip(CircleShape)
+            .clickable(role = Role.Switch, onClick = onToggle)
+            .semantics {
+                contentDescription = ctx.getString(R.string.cd_protection_switch)
+                stateDescription = stateText
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(Modifier.fillMaxSize().padding(10.dp)) {
+            val w = 16.dp.toPx()
             drawCircle(track, style = Stroke(w))
-            drawArc(color, -90f, 360f, useCenter = false, style = Stroke(w, cap = StrokeCap.Round))
+            if (checking) {
+                drawArc(ringColor, sweep - 90f, 100f, useCenter = false, style = Stroke(w, cap = StrokeCap.Round))
+            } else if (on) {
+                drawCircle(ringColor.copy(alpha = 0.12f * glow), radius = size.minDimension / 2 - w)
+                drawArc(ringColor, -90f, 360f, useCenter = false, style = Stroke(w, cap = StrokeCap.Round))
+            }
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                if (level == StatusLevel.PROTECTED) Icons.Filled.Shield else statusIcon(level),
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(64.dp),
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                if (tunnel.panic) stringResource(R.string.status_panic) else statusText(level),
-                style = MaterialTheme.typography.headlineMedium,
-            )
+            Box(
+                Modifier
+                    .size((96 * glow).dp)
+                    .clip(CircleShape)
+                    .background(if (on) ringColor.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceContainerHigh),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    when {
+                        !on -> Icons.Filled.PowerSettingsNew
+                        checking -> Icons.Filled.Shield
+                        level == StatusLevel.PROTECTED -> Icons.Filled.Shield
+                        else -> statusIcon(level)
+                    },
+                    contentDescription = null,
+                    tint = if (on) ringColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(56.dp),
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            Text(stateText, style = MaterialTheme.typography.headlineMedium)
         }
     }
+}
+
+fun levelName(l: ProtectionLevel): Int = when (l) {
+    ProtectionLevel.STANDARD -> R.string.level_standard
+    ProtectionLevel.STRICT -> R.string.level_strict
+    ProtectionLevel.MAXIMUM -> R.string.level_max
 }
 
 @Composable
@@ -306,7 +368,7 @@ private fun LayerCard(
     modifier: Modifier,
     icon: ImageVector,
     title: String,
-    level: StatusLevel,
+    level: StatusLevel?,
     big: String,
     detail: String,
     onClick: () -> Unit,
@@ -320,7 +382,16 @@ private fun LayerCard(
                 Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                StatusDot(level)
+                if (level != null) {
+                    StatusDot(level)
+                } else {
+                    Icon(
+                        Icons.Filled.Info,
+                        contentDescription = stringResource(R.string.not_configured),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
             }
             Spacer(Modifier.height(12.dp))
             Text(big, style = MaterialTheme.typography.headlineSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -482,17 +553,18 @@ fun reasonText(r: StatusReason): Int = when (r) {
     StatusReason.SELFTEST_PENDING -> R.string.reason_selftest_pending
 }
 
-private fun vpnLevel(t: TunnelState): StatusLevel = when {
+/** null = no VPN profile set up (neutral, not a warning). */
+private fun vpnLevel(t: TunnelState): StatusLevel? = when {
+    !t.wgWanted -> null
     !t.running -> StatusLevel.UNPROTECTED
-    t.wgWanted && t.wgConnected -> StatusLevel.PROTECTED
-    t.wgWanted -> StatusLevel.LIMITED
+    t.wgConnected -> StatusLevel.PROTECTED
     else -> StatusLevel.LIMITED
 }
 
 @Composable
 private fun vpnTitle(t: TunnelState): String = when {
     t.wgWanted -> t.wgProfileName ?: stringResource(R.string.layer_vpn)
-    else -> stringResource(R.string.off)
+    else -> stringResource(R.string.not_configured)
 }
 
 @Composable
@@ -501,7 +573,7 @@ private fun vpnDetail(t: TunnelState): String {
     return when {
         t.wgWanted && t.wgConnected -> stringResource(R.string.vpn_connected_since, Format.duration(ctx, t.wgSince))
         t.wgWanted -> stringResource(R.string.vpn_connecting)
-        else -> stringResource(R.string.vpn_only_blocker)
+        else -> stringResource(R.string.vpn_setup_hint)
     }
 }
 

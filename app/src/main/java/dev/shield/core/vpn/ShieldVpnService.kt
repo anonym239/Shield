@@ -20,6 +20,7 @@ import dev.shield.core.wireguard.WgConfigParser
 import dev.shield.core.wireguard.WgProfileRepository
 import dev.shield.data.BlockResponse
 import dev.shield.data.DohUpstream
+import dev.shield.data.ProtectionLevel
 import dev.shield.data.Settings
 import dev.shield.data.TunnelMode
 import dev.shield.data.repo.QueryRecorder
@@ -84,6 +85,7 @@ class ShieldVpnService : VpnService() {
         val dohUrl: String,
         val bootstrap: List<String>,
         val wgProfileId: String?,
+        val blockDnsBypass: Boolean,
     )
 
     override fun onCreate() {
@@ -165,14 +167,14 @@ class ShieldVpnService : VpnService() {
         val profileId = if (wgWanted) s.activeProfileId else null
         val kind = when {
             s.panic -> Kind.PANIC
-            profileId != null || s.tunnelMode == TunnelMode.FULL -> Kind.FULL
+            profileId != null || s.effectiveTunnelMode == TunnelMode.FULL -> Kind.FULL
             else -> Kind.DNS_ONLY
         }
         var bootstrap = s.dohBootstrap
         if (bootstrap.isEmpty() && s.upstream == DohUpstream.CUSTOM) {
             bootstrap = resolveOutside(hostOf(s.dohUrl))
         }
-        return Spec(kind, s.dohUrl, bootstrap, profileId)
+        return Spec(kind, s.dohUrl, bootstrap, profileId, s.protectionLevel == ProtectionLevel.MAXIMUM)
     }
 
     private suspend fun reconfigure(force: Boolean) = mutex.withLock {
@@ -275,6 +277,7 @@ class ShieldVpnService : VpnService() {
             setWgAddresses(wgCfg?.iface?.addresses?.joinToString(",") ?: "")
             setWgMtu(wgCfg?.iface?.mtu ?: 1280)
             setKillSwitch(s.killSwitch)
+            setBlockDnsBypass(sp.blockDnsBypass)
             setVirtualDNS4(DNS4)
             setVirtualDNS6(DNS6)
         }

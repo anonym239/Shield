@@ -104,6 +104,8 @@ class SettingsViewModel @Inject constructor(
     fun importProfile(name: String, text: String) = viewModelScope.launch {
         try {
             val p = profiles.import(name, text)
+            // first profile: use it right away (Shield then connects through it)
+            if (settings.value.activeProfileId == null) settingsRepo.update { it.copy(activeProfileId = p.id) }
             message(context.getString(dev.shield.R.string.profile_imported, p.name))
         } catch (e: Exception) {
             message(context.getString(dev.shield.R.string.profile_import_failed, e.message ?: ""))

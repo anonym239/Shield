@@ -15,6 +15,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Rule
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Dns
@@ -57,6 +58,7 @@ import dev.shield.core.filter.BlocklistRepository
 import dev.shield.core.filter.ListCategory
 import dev.shield.data.BlockResponse
 import dev.shield.data.DohUpstream
+import dev.shield.data.ProtectionLevel
 import dev.shield.data.TunnelMode
 import dev.shield.ui.common.EmptyHint
 import dev.shield.ui.common.Format
@@ -111,7 +113,11 @@ fun SettingsScreen(onOpen: (String) -> Unit, vm: SettingsViewModel = hiltViewMod
         Entry(Icons.Filled.PrivacyTip, R.string.set_privacy, R.string.set_privacy_sub) { onOpen(Routes.PRIVACY) }
         Entry(Icons.Filled.Save, R.string.set_backup, R.string.set_backup_sub) { onOpen(Routes.BACKUP) }
         Entry(Icons.Filled.Extension, R.string.set_extras, R.string.set_extras_sub) { onOpen(Routes.EXTRAS) }
+        Entry(Icons.Filled.AutoAwesome, R.string.ai_title, R.string.ai_entry_sub) { onOpen(Routes.AI) }
         Entry(Icons.Filled.BugReport, R.string.set_debug, R.string.set_debug_sub) { onOpen(Routes.DEBUG) }
+        SectionTitle(stringResource(R.string.behaviour))
+        SwitchRow(stringResource(R.string.quiet_mode), stringResource(R.string.quiet_mode_sub), s.quietMode, { v -> vm.update { it.copy(quietMode = v) } })
+        SwitchRow(stringResource(R.string.auto_heal), stringResource(R.string.auto_heal_sub), s.autoHeal, { v -> vm.update { it.copy(autoHeal = v) } })
         SectionTitle(stringResource(R.string.appearance))
         SwitchRow(stringResource(R.string.dynamic_color), stringResource(R.string.dynamic_color_sub), s.dynamicColor, { v -> vm.update { it.copy(dynamicColor = v) } })
         SectionTitle(stringResource(R.string.about))
@@ -140,11 +146,40 @@ fun ProtectionScreen(onBack: () -> Unit, onOpenRules: () -> Unit, vm: SettingsVi
     val lists by vm.lists.collectAsStateWithLifecycle()
     val ctx = LocalContext.current
     SettingsScaffold(stringResource(R.string.set_protection), onBack, vm) {
-        SectionTitle(stringResource(R.string.tunnel_mode))
-        RadioRow(stringResource(R.string.mode_dns), stringResource(R.string.mode_dns_sub), s.tunnelMode == TunnelMode.DNS_ONLY) {
-            vm.update { it.copy(tunnelMode = TunnelMode.DNS_ONLY) }
+        SectionTitle(stringResource(R.string.protection_level))
+        ProtectionLevel.entries.forEach { l ->
+            RadioRow(
+                stringResource(dev.shield.ui.dashboard.levelName(l)),
+                stringResource(
+                    when (l) {
+                        ProtectionLevel.STANDARD -> R.string.level_standard_sub
+                        ProtectionLevel.STRICT -> R.string.level_strict_sub
+                        ProtectionLevel.MAXIMUM -> R.string.level_max_sub
+                    },
+                ),
+                s.protectionLevel == l,
+            ) { vm.update { l.applyTo(it) } }
         }
-        RadioRow(stringResource(R.string.mode_full), stringResource(R.string.mode_full_sub), s.tunnelMode == TunnelMode.FULL) {
+        if (s.protectionLevel != ProtectionLevel.STANDARD) {
+            Text(
+                stringResource(R.string.level_breakage_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
+        }
+        SectionTitle(stringResource(R.string.tunnel_mode))
+        if (s.protectionLevel == ProtectionLevel.MAXIMUM) {
+            Text(
+                stringResource(R.string.level_max_forces_full),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
+        }
+        RadioRow(stringResource(R.string.mode_dns), stringResource(R.string.mode_dns_sub), s.effectiveTunnelMode == TunnelMode.DNS_ONLY) {
+            if (s.protectionLevel != ProtectionLevel.MAXIMUM) vm.update { it.copy(tunnelMode = TunnelMode.DNS_ONLY) }
+        }
+        RadioRow(stringResource(R.string.mode_full), stringResource(R.string.mode_full_sub), s.effectiveTunnelMode == TunnelMode.FULL) {
             vm.update { it.copy(tunnelMode = TunnelMode.FULL) }
         }
 

@@ -56,9 +56,19 @@ class Schedules @Inject constructor(
             PeriodicWorkRequestBuilder<RetentionWorker>(1, TimeUnit.DAYS).build(),
         )
         scope.launch {
-            settings.settings.map { Triple(it.listsAutoUpdate, it.listsWifiOnly, it.weeklyReportEnabled) }
+            settings.settings.map { listOf(it.listsAutoUpdate, it.listsWifiOnly, it.weeklyReportEnabled, it.aiEnabled) }
                 .distinctUntilChanged()
-                .collect { (auto, wifiOnly, weekly) ->
+                .collect { (auto, wifiOnly, weekly, ai) ->
+                    if (ai) {
+                        wm.enqueueUniquePeriodicWork(
+                            "ai", ExistingPeriodicWorkPolicy.KEEP,
+                            PeriodicWorkRequestBuilder<AiCheckWorker>(1, TimeUnit.DAYS)
+                                .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                                .build(),
+                        )
+                    } else {
+                        wm.cancelUniqueWork("ai")
+                    }
                     if (auto) {
                         val c = Constraints.Builder()
                             .setRequiredNetworkType(if (wifiOnly) NetworkType.UNMETERED else NetworkType.CONNECTED)
@@ -98,11 +108,13 @@ class SelfTestWorker @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val runner: SelfTestRunner,
     private val settings: SettingsRepository,
+    private val autoSelfTest: dev.shield.core.checks.AutoSelfTest,
 ) : CoroutineWorker(ctx, params) {
     override suspend fun doWork(): Result {
         if (settings.current().protectionEnabled) {
             val report = runner.run(full = false)
-            if (!report.allPassed) {
+            autoSelfTest.heal(report)
+            if (!report.allPassed && !settings.current().autoHeal) {
                 Notifications.alert(
                     applicationContext,
                     applicationContext.getString(R.string.alert_selftest_title),
@@ -166,5 +178,19 @@ class WeeklyReportWorker @AssistedInject constructor(
         }
         Notifications.report(ctx, ctx.getString(R.string.report_title), text)
         return Result.success()
+    }
+}
+
+/** Daily AI health check (only when enabled and a key is stored). */
+@HiltWorker
+class AiCheckWorker @AssistedInject constructor(
+    @Assisted ctx: Context,
+    @Assisted params: WorkerParameters,
+    private val ai: dev.shield.core.checks.AiAssistant,
+    private val settings: SettingsRepository,
+) : CoroutineWorker(ctx, params) {
+    override suspend fun doWork(): Result {
+        if (!settings.current().aiEnabled || !ai.hasKey()) return Result.success()
+        return if (ai.check().isSuccess) Result.success() else Result.retry()
     }
 }

@@ -41,12 +41,14 @@ class RuleSync @Inject constructor(
         scope.launch {
             try {
                 blocklists.loadFromDisk()
-                if (blocklists.state.value.totalRules == 0) blocklists.update()
+                val enabled = settings.current().enabledLists
+                val missing = blocklists.state.value.lists.values.any { it.id in enabled && it.rules == 0 }
+                if (missing) blocklists.update()
             } catch (e: Exception) {
                 ShieldLog.e("RuleSync", "initial list load failed", e)
             }
             // reload when the selection of lists changes
-            settings.settings.map { it.enabledLists }.distinctUntilChanged().drop(1).collect {
+            settings.settings.map { it.enabledLists to it.protectionLevel }.distinctUntilChanged().drop(1).collect {
                 blocklists.update()
             }
         }

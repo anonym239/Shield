@@ -16,7 +16,12 @@ import dev.shield.core.vpn.TunnelState
 import dev.shield.data.TunnelMode
 
 object Notifications {
+    /** Quiet mode: no pop-ups; set from the settings by ShieldApp. */
+    @Volatile
+    var quiet: Boolean = false
+
     const val CH_STATUS = "status"
+    const val CH_STATUS_QUIET = "status_quiet"
     const val CH_ALERT = "alerts"
     const val CH_REPORT = "report"
     const val STATUS_ID = 1
@@ -28,6 +33,13 @@ object Notifications {
         nm.createNotificationChannel(
             NotificationChannel(CH_STATUS, ctx.getString(R.string.channel_status), NotificationManager.IMPORTANCE_LOW).apply {
                 setShowBadge(false)
+            },
+        )
+        nm.createNotificationChannel(
+            NotificationChannel(CH_STATUS_QUIET, ctx.getString(R.string.channel_status_quiet), NotificationManager.IMPORTANCE_MIN).apply {
+                setShowBadge(false)
+                setSound(null, null)
+                enableVibration(false)
             },
         )
         nm.createNotificationChannel(
@@ -60,7 +72,9 @@ object Notifications {
             ctx, 1, Intent(ctx, ShieldVpnService::class.java).setAction(ShieldVpnService.ACTION_STOP),
             PendingIntent.FLAG_IMMUTABLE,
         )
-        return NotificationCompat.Builder(ctx, CH_STATUS)
+        return NotificationCompat.Builder(ctx, if (quiet) CH_STATUS_QUIET else CH_STATUS)
+            .setPriority(if (quiet) NotificationCompat.PRIORITY_MIN else NotificationCompat.PRIORITY_LOW)
+            .setSilent(true)
             .setSmallIcon(R.drawable.ic_shield)
             .setContentTitle(title)
             .setContentText(text)
@@ -80,6 +94,7 @@ object Notifications {
 
     /** Red notification: protection is not (fully) active. */
     fun alert(ctx: Context, title: String, text: String) {
+        if (quiet) return
         val n = NotificationCompat.Builder(ctx, CH_ALERT)
             .setSmallIcon(R.drawable.ic_shield)
             .setContentTitle(title)
@@ -99,6 +114,7 @@ object Notifications {
     }
 
     fun report(ctx: Context, title: String, text: String) {
+        if (quiet) return
         val n = NotificationCompat.Builder(ctx, CH_REPORT)
             .setSmallIcon(R.drawable.ic_shield)
             .setContentTitle(title)

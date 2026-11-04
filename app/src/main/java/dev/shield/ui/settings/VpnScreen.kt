@@ -69,6 +69,29 @@ fun VpnScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
 
     SettingsScaffold(stringResource(R.string.set_vpn), onBack, vm) {
         InfoBanner(stringResource(R.string.vpn_single_app_hint))
+        if (profiles.isEmpty()) {
+            SectionTitle(stringResource(R.string.proton_title))
+            listOf(R.string.proton_step1, R.string.proton_step2, R.string.proton_step3, R.string.proton_step4).forEachIndexed { i, res ->
+                Text(
+                    "${i + 1}. " + stringResource(res),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+                )
+            }
+            Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = {
+                        runCatching {
+                            ctx.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(PROTON_DOWNLOADS)))
+                        }
+                    },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text(stringResource(R.string.proton_open)) }
+                Button(onClick = { fileLauncher.launch(arrayOf("*/*")) }, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(stringResource(R.string.wg_import_file))
+                }
+            }
+        }
         SectionTitle(stringResource(R.string.wg_profiles))
         ListItem(
             headlineContent = { Text(stringResource(R.string.wg_none)) },
@@ -201,3 +224,6 @@ fun VpnScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
         )
     }
 }
+
+/** Proton account page where WireGuard configurations are created (opened only on tap). */
+private const val PROTON_DOWNLOADS = "https://account.protonvpn.com/downloads"

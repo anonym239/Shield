@@ -14,6 +14,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.shield.data.BlockResponse
 import dev.shield.data.DohUpstream
+import dev.shield.data.ProtectionLevel
 import dev.shield.data.Settings
 import dev.shield.data.TunnelMode
 import kotlinx.coroutines.flow.Flow
@@ -31,6 +32,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     private object K {
         val protection = booleanPreferencesKey("protection_enabled")
         val mode = stringPreferencesKey("tunnel_mode")
+        val level = stringPreferencesKey("protection_level")
         val upstream = stringPreferencesKey("doh_upstream")
         val customUrl = stringPreferencesKey("custom_doh_url")
         val customBootstrap = stringPreferencesKey("custom_doh_bootstrap")
@@ -57,6 +59,11 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val homeIp = stringPreferencesKey("home_ip")
         val dynamicColor = booleanPreferencesKey("dynamic_color")
         val panic = booleanPreferencesKey("panic")
+        val quiet = booleanPreferencesKey("quiet_mode")
+        val autoHeal = booleanPreferencesKey("auto_heal")
+        val ai = booleanPreferencesKey("ai_enabled")
+        val aiModel = stringPreferencesKey("ai_model")
+        val aiResult = stringPreferencesKey("ai_result_json")
         val listsUpdatedAt = longPreferencesKey("lists_updated_at")
         val selfTest = stringPreferencesKey("self_test_json")
         val onboarding = booleanPreferencesKey("onboarding_done")
@@ -79,6 +86,9 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     val selfTestJson: Flow<String?> = context.dataStore.data.map { it[K.selfTest] }
     suspend fun setSelfTestJson(json: String) = context.dataStore.edit { it[K.selfTest] = json }
 
+    val aiResultJson: Flow<String?> = context.dataStore.data.map { it[K.aiResult] }
+    suspend fun setAiResultJson(json: String) = context.dataStore.edit { it[K.aiResult] = json }
+
     val onboardingDone: Flow<Boolean> = context.dataStore.data.map { it[K.onboarding] ?: false }
     suspend fun setOnboardingDone() = context.dataStore.edit { it[K.onboarding] = true }
 
@@ -87,6 +97,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         return Settings(
             protectionEnabled = this[K.protection] ?: d.protectionEnabled,
             tunnelMode = enumOr(this[K.mode], d.tunnelMode),
+            protectionLevel = enumOr(this[K.level], d.protectionLevel),
             upstream = enumOr(this[K.upstream], d.upstream),
             customDohUrl = this[K.customUrl] ?: d.customDohUrl,
             customDohBootstrap = this[K.customBootstrap] ?: d.customDohBootstrap,
@@ -113,12 +124,17 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             homeIp = this[K.homeIp] ?: d.homeIp,
             dynamicColor = this[K.dynamicColor] ?: d.dynamicColor,
             panic = this[K.panic] ?: d.panic,
+            quietMode = this[K.quiet] ?: d.quietMode,
+            autoHeal = this[K.autoHeal] ?: d.autoHeal,
+            aiEnabled = this[K.ai] ?: d.aiEnabled,
+            aiModel = this[K.aiModel]?.takeIf { it.isNotBlank() } ?: d.aiModel,
         )
     }
 
     private fun MutablePreferences.write(s: Settings) {
         this[K.protection] = s.protectionEnabled
         this[K.mode] = s.tunnelMode.name
+        this[K.level] = s.protectionLevel.name
         this[K.upstream] = s.upstream.name
         this[K.customUrl] = s.customDohUrl
         this[K.customBootstrap] = s.customDohBootstrap
@@ -145,6 +161,10 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         this[K.homeIp] = s.homeIp
         this[K.dynamicColor] = s.dynamicColor
         this[K.panic] = s.panic
+        this[K.quiet] = s.quietMode
+        this[K.autoHeal] = s.autoHeal
+        this[K.ai] = s.aiEnabled
+        this[K.aiModel] = s.aiModel
     }
 
     private inline fun <reified T : Enum<T>> enumOr(value: String?, default: T): T =

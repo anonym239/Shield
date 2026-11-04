@@ -63,6 +63,9 @@ type Config struct {
 	WgMtu int32
 	// KillSwitch drops all non-DNS flows while WireGuard is not connected.
 	KillSwitch bool
+	// BlockDnsBypass rejects DNS-over-TLS / DNS-over-QUIC (port 853), so apps
+	// cannot resolve around the filter (DoH servers are blocked by list).
+	BlockDnsBypass bool
 	// VirtualDNS4 / VirtualDNS6 are the DNS addresses announced to Android.
 	VirtualDNS4 string
 	VirtualDNS6 string

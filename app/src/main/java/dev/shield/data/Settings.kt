@@ -3,6 +3,32 @@ package dev.shield.data
 /** Tunnel stage (SPEC §5.2). */
 enum class TunnelMode { DNS_ONLY, FULL }
 
+/**
+ * Protection level presets. STANDARD blocks ads/trackers/malware/phishing without breaking apps,
+ * STRICT additionally blocks app telemetry (Firebase, Crashlytics, analytics SDKs), MAXIMUM adds
+ * large threat feeds, DNS-bypass protection and forces the full tunnel with kill switch.
+ */
+enum class ProtectionLevel(val lists: Set<String>, val aggressiveEasyPrivacy: Boolean) {
+    STANDARD(setOf("adguard_dns", "easyprivacy", "urlhaus", "phishing_army"), false),
+    STRICT(setOf("adguard_dns", "easyprivacy", "urlhaus", "phishing_army", "builtin_telemetry", "hagezi_pro"), true),
+    MAXIMUM(
+        setOf(
+            "adguard_dns", "easyprivacy", "urlhaus", "phishing_army", "phishing_filter", "builtin_telemetry",
+            "hagezi_pro_plus", "hagezi_tif", "hagezi_doh", "hagezi_native_samsung", "hagezi_native_xiaomi",
+        ),
+        true,
+    ),
+    ;
+
+    /** Settings implied by the level (lists, tunnel, kill switch). */
+    fun applyTo(s: Settings): Settings = s.copy(
+        protectionLevel = this,
+        enabledLists = lists,
+        tunnelMode = if (this == MAXIMUM) TunnelMode.FULL else s.tunnelMode,
+        killSwitch = if (this == MAXIMUM) true else s.killSwitch,
+    )
+}
+
 /** How blocked domains are answered. */
 enum class BlockResponse { ZERO_IP, NXDOMAIN }
 
@@ -17,6 +43,7 @@ enum class DohUpstream(val label: String, val url: String, val bootstrap: List<S
 
 data class Settings(
     val protectionEnabled: Boolean = false,
+    val protectionLevel: ProtectionLevel = ProtectionLevel.STANDARD,
     val tunnelMode: TunnelMode = TunnelMode.DNS_ONLY,
     val upstream: DohUpstream = DohUpstream.QUAD9,
     val customDohUrl: String = "",
@@ -44,6 +71,13 @@ data class Settings(
     val homeIp: String = "",
     val dynamicColor: Boolean = false,
     val panic: Boolean = false,
+    /** No pop-up notifications (alerts, weekly report); the mandatory VPN notice is minimised. */
+    val quietMode: Boolean = false,
+    /** Restart tunnel / reload lists automatically when the self-test fails. */
+    val autoHeal: Boolean = true,
+    /** Daily AI health check with the user's own Gemini API key (opt-in). */
+    val aiEnabled: Boolean = false,
+    val aiModel: String = DEFAULT_AI_MODEL,
 ) {
     val dohUrl: String get() = if (upstream == DohUpstream.CUSTOM) customDohUrl else upstream.url
     val dohBootstrap: List<String>
@@ -52,9 +86,13 @@ data class Settings(
         } else {
             upstream.bootstrap
         }
+    /** MAXIMUM always uses the full tunnel (packet firewall, DoT blocking). */
+    val effectiveTunnelMode: TunnelMode get() = if (protectionLevel == ProtectionLevel.MAXIMUM) TunnelMode.FULL else tunnelMode
+
     val dohLabel: String get() = if (upstream == DohUpstream.CUSTOM) customDohUrl else upstream.label
 
     companion object {
-        val DEFAULT_LISTS = setOf("adguard_dns", "easyprivacy", "urlhaus", "phishing_army")
+        val DEFAULT_LISTS = ProtectionLevel.STANDARD.lists
+        const val DEFAULT_AI_MODEL = "gemini-flash-latest"
     }
 }

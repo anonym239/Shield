@@ -48,3 +48,14 @@ class BlocklistParserTest {
         assertEquals(3, r.blocked.size)
     }
 }
+
+class AggressiveParserTest {
+    @Test
+    fun thirdPartyRulesOnlyInAggressiveMode() {
+        val text = "||tracker.example^\$third-party\n||cdn.example^\$script,third-party\n@@||ok.example^\$third-party\n"
+        assertEquals(emptySet<String>(), BlocklistParser.parse(text).blocked)
+        val agg = BlocklistParser.parse(text, aggressive = true)
+        assertEquals(setOf("tracker.example"), agg.blocked) // $script is still not DNS-applicable
+        assertEquals(emptySet<String>(), agg.allowed) // exceptions are never widened
+    }
+}

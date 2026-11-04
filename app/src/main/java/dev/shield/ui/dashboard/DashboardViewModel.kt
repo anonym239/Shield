@@ -53,6 +53,7 @@ class DashboardViewModel @Inject constructor(
     private val selfTest: SelfTestRunner,
     private val settingsRepo: SettingsRepository,
     private val blocklists: BlocklistRepository,
+    ai: dev.shield.core.checks.AiAssistant,
     statsDao: StatsDao,
     dnsDao: DnsQueryDao,
     rules: RulesRepository,
@@ -63,6 +64,9 @@ class DashboardViewModel @Inject constructor(
     val overview: StateFlow<Overview?> = status.overview
     val network: StateFlow<NetworkState> = network.state
     val selfTestRunning: StateFlow<Boolean> = selfTest.running
+    val aiVerdict: StateFlow<dev.shield.core.checks.AiVerdict?> =
+        ai.lastVerdict.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     val settings: StateFlow<Settings> = settingsRepo.settings.stateIn(viewModelScope, SharingStarted.Eagerly, Settings())
 
     /** Re-evaluated every hour so "today" and the 24 h window move on. */

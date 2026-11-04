@@ -42,7 +42,7 @@ data class BlocklistState(
 /** Downloads, stores and parses the subscribed lists and loads them into the [FilterEngine]. */
 @Singleton
 class BlocklistRepository @Inject constructor(
-    @ApplicationContext context: Context,
+    @ApplicationContext private val context: Context,
     private val http: OkHttpClient,
     private val engine: FilterEngine,
     private val settings: SettingsRepository,
@@ -66,7 +66,7 @@ class BlocklistRepository @Inject constructor(
             val enabled = settings.current().enabledLists
             val meta = readMeta()
             var ok = true
-            for (src in SOURCES.filter { it.id in enabled }) {
+            for (src in SOURCES.filter { it.id in enabled && !it.url.startsWith(ASSET) }) {
                 val prev = meta.optJSONObject(src.id)
                 try {
                     events.info(EventType.NETWORK_ACCESS, "Blockliste laden: ${src.name}", mapOf("url" to src.url))
@@ -118,13 +118,20 @@ class BlocklistRepository @Inject constructor(
         }
     }
 
-    private fun reloadEngine(enabled: Set<String>) {
+    private suspend fun reloadEngine(enabled: Set<String>) {
         val meta = readMeta()
+        val aggressive = settings.current().protectionLevel.aggressiveEasyPrivacy
         val loaded = SOURCES.filter { it.id in enabled }.mapNotNull { src ->
-            val f = File(dir, "${src.id}.txt")
-            if (!f.exists()) return@mapNotNull null
             try {
-                LoadedList(src.id, src.name, src.category, f.bufferedReader().useLines { BlocklistParser.parse(it) })
+                val reader = if (src.url.startsWith(ASSET)) {
+                    context.assets.open(src.url.removePrefix(ASSET)).bufferedReader()
+                } else {
+                    val f = File(dir, "${src.id}.txt")
+                    if (!f.exists()) return@mapNotNull null
+                    f.bufferedReader()
+                }
+                val agg = aggressive && src.id == "easyprivacy"
+                LoadedList(src.id, src.name, src.category, reader.useLines { BlocklistParser.parse(it, agg) })
             } catch (e: Exception) {
                 ShieldLog.e("Lists", "parse ${src.id} failed", e)
                 null
@@ -136,7 +143,7 @@ class BlocklistRepository @Inject constructor(
             src.id to ListStatus(
                 src.id,
                 engine.listCounts[src.id] ?: 0,
-                m?.optLong("updatedAt") ?: 0L,
+                if (src.url.startsWith(ASSET)) System.currentTimeMillis() else m?.optLong("updatedAt") ?: 0L,
                 m?.optString("error")?.takeIf { it.isNotEmpty() },
             )
         }
@@ -159,6 +166,10 @@ class BlocklistRepository @Inject constructor(
     }
 
     companion object {
+        /** Lists shipped inside the APK (work offline, no download). */
+        const val ASSET = "asset:"
+        private const val HAGEZI = "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock"
+
         val SOURCES = listOf(
             BlocklistSource(
                 "adguard_dns", "AdGuard DNS Filter",
@@ -180,6 +191,13 @@ class BlocklistRepository @Inject constructor(
                 "phishing_filter", "Phishing Filter (malware-filter)",
                 "https://malware-filter.gitlab.io/malware-filter/phishing-filter-agh.txt", ListCategory.PHISHING, false,
             ),
+            BlocklistSource("builtin_telemetry", "Shield Telemetrie-Liste (eingebaut)", ASSET + "lists/telemetry.txt", ListCategory.TRACKING, false),
+            BlocklistSource("hagezi_pro", "HaGeZi Pro", "$HAGEZI/pro.txt", ListCategory.TRACKING, false),
+            BlocklistSource("hagezi_pro_plus", "HaGeZi Pro++", "$HAGEZI/pro.plus.txt", ListCategory.TRACKING, false),
+            BlocklistSource("hagezi_tif", "HaGeZi Threat Intelligence (Medium)", "$HAGEZI/tif.medium.txt", ListCategory.MALWARE, false),
+            BlocklistSource("hagezi_doh", "HaGeZi DNS-Umgehung (DoH/DoT-Server)", "$HAGEZI/doh.txt", ListCategory.MALWARE, false),
+            BlocklistSource("hagezi_native_samsung", "HaGeZi Samsung-Telemetrie", "$HAGEZI/native.samsung.txt", ListCategory.TRACKING, false),
+            BlocklistSource("hagezi_native_xiaomi", "HaGeZi Xiaomi-Telemetrie", "$HAGEZI/native.xiaomi.txt", ListCategory.TRACKING, false),
         )
         val PHISHING_IDS = SOURCES.filter { it.category == ListCategory.PHISHING }.map { it.id }.toSet()
     }

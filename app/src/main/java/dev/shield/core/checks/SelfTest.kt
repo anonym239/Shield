@@ -29,7 +29,6 @@ import java.net.UnknownHostException
 import javax.inject.Inject
 import javax.inject.Singleton
 
-enum class TestId { TUNNEL, SYSTEM_DNS, TEST_DOMAIN, UPSTREAM, LISTS, VPN }
 
 /** passed = null: not applicable (e.g. VPN test without WireGuard profile). */
 data class TestResult(val id: TestId, val passed: Boolean?, val detail: String)

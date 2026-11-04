@@ -9,6 +9,8 @@ object Redactor {
         Regex("(?i)(token|password|passwort|secret|authorization)\\s*[=:]\\s*\\S+") to "$1=<redacted>",
         // 32-byte base64 keys (44 chars ending with '=')
         Regex("\\b[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=") to "<key>",
+        // Google API keys (Gemini)
+        Regex("AIza[0-9A-Za-z_\\-]{30,40}") to "<api-key>",
         // 64 hex chars (UAPI keys)
         Regex("\\b[0-9a-fA-F]{64}\\b") to "<key>",
     )

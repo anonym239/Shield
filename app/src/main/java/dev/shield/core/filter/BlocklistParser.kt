@@ -15,13 +15,15 @@ object BlocklistParser {
         "ip6-loopback", "ip6-localnet", "ip6-mcastprefix", "ip6-allnodes", "ip6-allrouters", "0.0.0.0",
     )
     private val allowedModifiers = setOf("important", "all", "dnstype=a", "dnstype=aaaa")
+    /** Accepted in aggressive mode: a DNS filter cannot tell first- from third-party requests. */
+    private val aggressiveModifiers = setOf("third-party", "3p")
 
-    fun parse(lines: Sequence<String>): ParsedList {
+    fun parse(lines: Sequence<String>, aggressive: Boolean = false): ParsedList {
         val blocked = HashSet<String>()
         val allowed = HashSet<String>()
         var skipped = 0
         for (raw in lines) {
-            when (val r = parseLine(raw)) {
+            when (val r = parseLine(raw, aggressive)) {
                 is LineResult.Block -> blocked.add(r.domain)
                 is LineResult.Allow -> allowed.add(r.domain)
                 LineResult.Skip -> skipped++
@@ -31,7 +33,7 @@ object BlocklistParser {
         return ParsedList(blocked, allowed, skipped)
     }
 
-    fun parse(text: String): ParsedList = parse(text.lineSequence())
+    fun parse(text: String, aggressive: Boolean = false): ParsedList = parse(text.lineSequence(), aggressive)
 
     sealed interface LineResult {
         data class Block(val domain: String) : LineResult
@@ -40,7 +42,7 @@ object BlocklistParser {
         data object Empty : LineResult
     }
 
-    fun parseLine(raw: String): LineResult {
+    fun parseLine(raw: String, aggressive: Boolean = false): LineResult {
         var line = raw.trim()
         if (line.isEmpty() || line.startsWith('!') || line.startsWith('#') || line.startsWith('[')) {
             return LineResult.Empty
@@ -50,11 +52,12 @@ object BlocklistParser {
         if (hash > 0) line = line.substring(0, hash).trim()
 
         if (line.startsWith("@@||")) {
-            val d = parseAdguard(line.substring(4)) ?: return LineResult.Skip
+            // exceptions are never widened in aggressive mode
+            val d = parseAdguard(line.substring(4), false) ?: return LineResult.Skip
             return LineResult.Allow(d)
         }
         if (line.startsWith("||")) {
-            val d = parseAdguard(line.substring(2)) ?: return LineResult.Skip
+            val d = parseAdguard(line.substring(2), aggressive) ?: return LineResult.Skip
             return LineResult.Block(d)
         }
         if (line.startsWith("@@") || line.startsWith("/") || line.contains("##") || line.contains("#@#")) {
@@ -78,12 +81,12 @@ object BlocklistParser {
     }
 
     /** Parses "domain^", "domain^$important", "domain" (after the leading ||). */
-    private fun parseAdguard(rest: String): String? {
+    private fun parseAdguard(rest: String, aggressive: Boolean): String? {
         var body = rest
         val dollar = body.indexOf('$')
         if (dollar >= 0) {
             val mods = body.substring(dollar + 1).split(',').map { it.trim().lowercase() }
-            if (mods.any { it !in allowedModifiers }) return null
+            if (mods.any { it !in allowedModifiers && !(aggressive && it in aggressiveModifiers) }) return null
             body = body.substring(0, dollar)
         }
         if (body.endsWith("^|")) body = body.dropLast(2)

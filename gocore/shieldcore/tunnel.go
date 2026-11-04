@@ -298,6 +298,10 @@ func (t *Tunnel) uidFor(proto int32, id stack.TransportEndpointID) int32 {
 // allow runs the firewall checks for a new non-DNS flow.
 func (t *Tunnel) allow(proto int32, uid int32, dst string, port uint16) bool {
 	t.flowsTotal.Add(1)
+	if t.cfg.BlockDnsBypass && port == 853 {
+		t.flowsBlocked.Add(1)
+		return false
+	}
 	if t.panicMode.Load() {
 		t.flowsBlocked.Add(1)
 		return false

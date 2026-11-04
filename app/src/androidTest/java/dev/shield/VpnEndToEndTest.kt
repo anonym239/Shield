@@ -10,6 +10,7 @@ import dagger.hilt.android.EntryPointAccessors
 import dev.shield.core.checks.TestId
 import dev.shield.core.filter.FilterEngine
 import dev.shield.core.vpn.TunnelPhase
+import dev.shield.data.ProtectionLevel
 import dev.shield.data.TunnelMode
 import dev.shield.di.TestHooks
 import kotlinx.coroutines.delay
@@ -53,7 +54,7 @@ class VpnEndToEndTest {
     fun stop() = runBlocking {
         hooks.controller().setPanic(false)
         hooks.controller().setProtection(false)
-        hooks.settings().update { it.copy(tunnelMode = TunnelMode.DNS_ONLY) }
+        hooks.settings().update { ProtectionLevel.STANDARD.applyTo(it).copy(tunnelMode = TunnelMode.DNS_ONLY) }
     }
 
     private suspend fun awaitRunning(mode: TunnelMode) = withTimeout(30_000) {
@@ -102,10 +103,15 @@ class VpnEndToEndTest {
 
     @Test
     fun stageA_dnsOnly() = runBlocking {
-        hooks.settings().update { it.copy(tunnelMode = TunnelMode.DNS_ONLY, panic = false) }
+        hooks.settings().update {
+            ProtectionLevel.STRICT.applyTo(it).copy(tunnelMode = TunnelMode.DNS_ONLY, panic = false, autoHeal = false)
+        }
         hooks.controller().setProtection(true)
         awaitRunning(TunnelMode.DNS_ONLY)
         checkDnsFiltering()
+        // level "Streng": built-in telemetry list (offline) blocks Firebase logging
+        withTimeout(20_000) { while (!hooks.filter().decide("firebaselogging-pa.googleapis.com").blocked) delay(200) }
+        assertTrue("telemetry not blocked", isBlockedAnswer(lookup(unique("firebaselogging-pa.googleapis.com"))))
 
         val report = hooks.selfTest().run(full = false)
         val byId = report.results.associateBy { it.id }
@@ -118,7 +124,7 @@ class VpnEndToEndTest {
 
     @Test
     fun stageB_fullTunnelAndPanic() = runBlocking {
-        hooks.settings().update { it.copy(tunnelMode = TunnelMode.FULL, panic = false) }
+        hooks.settings().update { it.copy(tunnelMode = TunnelMode.FULL, panic = false, autoHeal = false) }
         hooks.controller().setProtection(true)
         awaitRunning(TunnelMode.FULL)
         checkDnsFiltering()

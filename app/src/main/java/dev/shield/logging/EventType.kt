@@ -25,6 +25,7 @@ enum class EventType {
     LEAK_TEST,
     CHECK_RESULT,
     BACKUP,
+    AI_CHECK,
     RETENTION,
     ERROR,
 }
