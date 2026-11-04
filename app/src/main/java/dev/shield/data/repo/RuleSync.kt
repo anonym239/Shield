@@ -49,6 +49,8 @@ class RuleSync @Inject constructor(
             }
             // reload when the selection of lists changes
             settings.settings.map { it.enabledLists to it.protectionLevel }.distinctUntilChanged().drop(1).collect {
+                // apply built-in and already downloaded lists immediately, then download the rest
+                blocklists.loadFromDisk()
                 blocklists.update()
             }
         }
