@@ -81,7 +81,9 @@ jobs:
           SHIELD_VERSION_NAME: ${{ steps.v.outputs.version }}
           SHIELD_VERSION_CODE: ${{ steps.v.outputs.code }}
         run: |
-          ./gradlew --stacktrace testDebugUnitTest assembleRelease
+          # sequential: parallel KSP runs (debug + release) race on the Room schema file
+          ./gradlew --stacktrace testDebugUnitTest
+          ./gradlew --stacktrace assembleRelease
           mkdir -p dist
           V="${{ steps.v.outputs.version }}"
           ls app/build/outputs/apk/release/
