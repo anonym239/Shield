@@ -18,12 +18,17 @@ import (
 
 const createNoWindow = 0x08000000
 
+// psPrelude silences progress/warning streams and forces UTF-8, so stdout only carries our data.
+const psPrelude = "$ProgressPreference='SilentlyContinue'; $WarningPreference='SilentlyContinue'; $InformationPreference='SilentlyContinue'; [Console]::OutputEncoding=[Text.Encoding]::UTF8; "
+
 func powershell(script string) (string, error) {
-	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script)
+	cmd := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", psPrelude+script)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: createNoWindow}
-	out, err := cmd.CombinedOutput()
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
 	if err != nil {
-		return string(out), fmt.Errorf("%v: %s", err, strings.TrimSpace(string(out)))
+		return string(out), fmt.Errorf("%v: %s", err, strings.TrimSpace(stderr.String()))
 	}
 	return string(out), nil
 }
@@ -42,12 +47,8 @@ if ($up) { @(Get-DnsClientServerAddress -InterfaceIndex $up | Select-Object Inte
 	if err != nil {
 		return nil, err
 	}
-	out = strings.TrimSpace(out)
-	if strings.HasPrefix(out, "{") {
-		out = "[" + out + "]"
-	}
 	var list []adapterDNS
-	if err := json.Unmarshal([]byte(out), &list); err != nil {
+	if err := json.Unmarshal([]byte(extractJSONArray(out)), &list); err != nil {
 		return nil, fmt.Errorf("DNS-Liste nicht lesbar: %v", err)
 	}
 	return list, nil
@@ -63,13 +64,7 @@ $r | ConvertTo-Json -Compress`)
 	if err != nil {
 		return nil, err
 	}
-	out = strings.TrimSpace(out)
-	if out == "" {
-		return map[int][]string{}, nil
-	}
-	if strings.HasPrefix(out, "{") {
-		out = "[" + out + "]"
-	}
+	out = extractJSONArray(out)
 	var rows []struct {
 		I  int    `json:"i"`
 		NS string `json:"ns"`

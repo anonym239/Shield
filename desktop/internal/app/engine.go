@@ -223,7 +223,14 @@ func (e *Engine) Start() error {
 			}
 		}
 	}
-	if _, err := applySystemDNS(e.dir); err != nil {
+	var dnsErr error
+	for i := 0; i < 3; i++ { // PowerShell/WMI can be briefly unavailable
+		if _, dnsErr = applySystemDNS(e.dir); dnsErr == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+	if err := dnsErr; err != nil {
 		cancel()
 		e.closeVPN()
 		e.res.close()
