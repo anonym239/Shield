@@ -120,7 +120,10 @@ func (r *resolver) query(ctx context.Context, q []byte) ([]byte, error) {
 		return up.query(ctx, q)
 	}
 	if time.Now().After(down) {
-		ans, err := up.query(ctx, q)
+		// a hanging primary must not exceed the Windows resolver timeout
+		pctx, cancel := context.WithTimeout(ctx, 2500*time.Millisecond)
+		ans, err := up.query(pctx, q)
+		cancel()
 		if err == nil {
 			return ans, nil
 		}

@@ -2,6 +2,12 @@
 
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [SemVer](https://semver.org/lang/de/).
 
+## [1.1.3] – 2026-11-04
+
+### Behoben
+- Ausweichserver greift schneller: ein hängender DoH-Hauptserver bekommt höchstens 2,5 s, dann antwortet der zweite
+  verschlüsselte Server – bevor Android oder Windows die Anfrage aufgeben (Android, Windows).
+
 ## [1.1.2] – 2026-11-04
 
 ### Hinzugefügt

@@ -633,7 +633,10 @@ func (t *Tunnel) upstreamQuery(ctx context.Context, q []byte) ([]byte, error) {
 		return t.doh.query(ctx, q)
 	}
 	if time.Now().UnixMilli() >= t.primaryDownUntil.Load() {
-		ans, err := t.doh.query(ctx, q)
+		// a hanging primary must not exceed the system resolver timeout (~5 s)
+		pctx, cancel := context.WithTimeout(ctx, 2500*time.Millisecond)
+		ans, err := t.doh.query(pctx, q)
+		cancel()
 		if err == nil {
 			return ans, nil
 		}

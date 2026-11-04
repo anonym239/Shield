@@ -84,7 +84,12 @@ class VpnEndToEndTest {
         assertTrue("custom rule not applied", isBlockedAnswer(lookup(unique("blocked-by-shield-e2e.com"))))
         assertTrue("selftest domain not blocked", isBlockedAnswer(lookup(unique(FilterEngine.SELFTEST_DOMAIN))))
         // allowed domain is resolved via DoH
-        val ok = lookup("example.com")
+        var ok = lookup("example.com")
+        for (attempt in 1..2) { // absorbs short network hiccups of the CI emulator
+            if (ok.isNotEmpty()) break
+            delay(2000)
+            ok = lookup("example.com")
+        }
         if (ok.isEmpty()) {
             hooks.recorder().flush()
             val recent = hooks.database().dnsQueryDao().since(0, 20).joinToString { "${it.domain}=${it.result}/${it.rule}" }

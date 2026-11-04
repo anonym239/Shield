@@ -30,6 +30,20 @@ class FailoverUpstreamTest {
         assertEquals(1, f.resolve(ByteArray(0))[0].toInt()) // primary back after cooldown
     }
 
+    @Test
+    fun hangingPrimaryFallsBackQuickly() = runBlocking {
+        val hanging = object : DnsUpstream {
+            override suspend fun resolve(query: ByteArray): ByteArray {
+                kotlinx.coroutines.delay(60_000)
+                return byteArrayOf(1)
+            }
+        }
+        val start = System.currentTimeMillis()
+        val r = FailoverUpstream(hanging, Up(2), primaryTimeoutMs = 200).resolve(ByteArray(0))
+        assertEquals(2, r[0].toInt())
+        assert(System.currentTimeMillis() - start < 2000)
+    }
+
     @Test(expected = IOException::class)
     fun bothDownThrows() = runBlocking<Unit> {
         FailoverUpstream(Up(1).apply { fail = true }, Up(2).apply { fail = true }).resolve(ByteArray(0))
