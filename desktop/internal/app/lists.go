@@ -65,7 +65,9 @@ type lists struct {
 	engine   *filter.Engine
 	events   *eventLog
 	updating bool
+	pending  bool // another update was requested while one was running
 	http     *http.Client
+	current  func() Settings
 }
 
 func newLists(dir string, engine *filter.Engine, ev *eventLog) *lists {
@@ -118,16 +120,40 @@ func (l *lists) reload(s Settings) {
 	logf("Lists: %d geladen, %d Regeln", len(loaded), l.engine.RuleCount())
 }
 
-// update downloads all enabled lists (If-None-Match) and reloads.
+// update downloads all enabled lists (If-None-Match) and reloads. A request
+// during a running update is queued, so a level change is never lost.
 func (l *lists) update(s Settings, force bool) bool {
 	l.mu.Lock()
 	if l.updating {
+		l.pending = true
 		l.mu.Unlock()
 		return false
 	}
 	l.updating = true
 	l.mu.Unlock()
-	defer func() { l.mu.Lock(); l.updating = false; l.mu.Unlock() }()
+	ok := l.updateOnce(s, force)
+	for {
+		l.mu.Lock()
+		again := l.pending
+		l.pending = false
+		if !again {
+			l.updating = false
+			l.mu.Unlock()
+			return ok
+		}
+		l.mu.Unlock()
+		ok = l.updateOnce(l.settingsNow(s), force)
+	}
+}
+
+func (l *lists) settingsNow(fallback Settings) Settings {
+	if l.current != nil {
+		return l.current()
+	}
+	return fallback
+}
+
+func (l *lists) updateOnce(s Settings, force bool) bool {
 	ok := true
 	for _, src := range Sources {
 		if !contains(s.Lists, src.ID) || src.URL == "builtin" {
@@ -142,7 +168,7 @@ func (l *lists) update(s Settings, force bool) bool {
 		}
 	}
 	l.saveMeta()
-	l.reload(s)
+	l.reload(l.settingsNow(s)) // the selection may have changed during the download
 	if ok {
 		l.events.add("LISTS_UPDATED", "INFO", "Blocklisten aktualisiert: %d Regeln", l.engine.RuleCount())
 	}

@@ -57,3 +57,21 @@ func TestLevels(t *testing.T) {
 		t.Fatal(Redact("PrivateKey = abc AIzaSyA1234567890abcdefghijklmnopqrstuv"))
 	}
 }
+
+func TestListUpdateQueuedNotLost(t *testing.T) {
+	l := newLists(t.TempDir(), filter.NewEngine(), &eventLog{path: t.TempDir() + "/e"})
+	cur := DefaultSettings().ApplyLevel(Strict)
+	l.current = func() Settings { return cur }
+	l.updating = true // simulate a running download
+	if l.update(cur, false) {
+		t.Fatal("second update should be queued")
+	}
+	if !l.pending {
+		t.Fatal("request lost")
+	}
+	// built-in list of the current level is applied without network
+	l.reload(cur)
+	if !l.engine.Decide("firebaselogging-pa.googleapis.com").Blocked {
+		t.Fatal("level not applied")
+	}
+}

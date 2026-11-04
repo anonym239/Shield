@@ -2,6 +2,13 @@
 
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [SemVer](https://semver.org/lang/de/).
 
+## [1.1.1] – 2026-11-04
+
+### Behoben
+- Ein Wechsel der Schutzstufe während des ersten Listen-Downloads griff erst nach dem Download, und der laufende
+  Download konnte die alte Listenauswahl wieder aktivieren (Android und Windows; vom Emulator-Test gefunden).
+- Windows: PowerShell-Ausgabe wird robust gelesen; DNS-Setzen wird bei kurzzeitigen Fehlern wiederholt.
+
 ## [1.1.0] – 2026-11-04
 
 ### Hinzugefügt

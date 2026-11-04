@@ -88,6 +88,7 @@ func NewEngine() *Engine {
 	f := filter.NewEngine()
 	e := &Engine{dir: dir, settings: loadSettings(dir), events: ev, filter: f, phase: "STOPPED", heal: NewHealPolicy(3)}
 	e.lists = newLists(dir, f, ev)
+	e.lists.current = e.settings.get
 	e.res = newResolver(f, ev, dir)
 	e.loadRules()
 	if b, err := os.ReadFile(filepath.Join(dir, "ai.json")); err == nil {

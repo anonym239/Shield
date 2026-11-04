@@ -50,14 +50,15 @@ class BlocklistRepository @Inject constructor(
 ) {
     private val dir = File(context.filesDir, "lists").apply { mkdirs() }
     private val metaFile = File(dir, "meta.json")
+    /** Serialises downloads. */
     private val mutex = Mutex()
+    /** Serialises engine reloads; never held during network I/O, so a new level applies at once. */
+    private val reloadMutex = Mutex()
     private val _state = MutableStateFlow(BlocklistState())
     val state: StateFlow<BlocklistState> = _state.asStateFlow()
 
     /** Loads the stored lists into the engine (no network). */
-    suspend fun loadFromDisk() = mutex.withLock {
-        withContext(Dispatchers.IO) { reloadEngine(settings.current().enabledLists) }
-    }
+    suspend fun loadFromDisk() = withContext(Dispatchers.IO) { reloadEngine(settings.current().enabledLists) }
 
     /** Downloads all enabled lists (user action or 24 h worker) and reloads the engine. */
     suspend fun update(force: Boolean = false): Boolean = mutex.withLock {
@@ -108,7 +109,7 @@ class BlocklistRepository @Inject constructor(
                 }
             }
             writeMeta(meta)
-            reloadEngine(enabled)
+            reloadEngine(settings.current().enabledLists) // the selection may have changed during the download
             settings.setListsUpdatedAt(System.currentTimeMillis())
             if (ok) {
                 events.info(EventType.LISTS_UPDATED, "Blocklisten aktualisiert: ${engine.ruleCount} Regeln")
@@ -118,7 +119,9 @@ class BlocklistRepository @Inject constructor(
         }
     }
 
-    private suspend fun reloadEngine(enabled: Set<String>) {
+    private suspend fun reloadEngine(enabled: Set<String>) = reloadMutex.withLock { reloadEngineLocked(enabled) }
+
+    private suspend fun reloadEngineLocked(enabled: Set<String>) {
         val meta = readMeta()
         val aggressive = settings.current().protectionLevel.aggressiveEasyPrivacy
         val loaded = SOURCES.filter { it.id in enabled }.mapNotNull { src ->
