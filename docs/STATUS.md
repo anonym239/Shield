@@ -1,6 +1,6 @@
 # Status
 
-Stand: Version 1.2.0 (2026-11-04). Alle Phasen 0–7 aus `SPEC.md` §8 sind implementiert, dazu Shield für Windows,
+Stand: Version 1.3.0 (2026-11-04). Alle Phasen 0–7 aus `SPEC.md` §8 sind implementiert, dazu Shield für Windows,
 Schutzstufen, automatischer Selbsttest mit Selbstheilung, Ruhemodus, optionaler KI-Assistent und die DNS-fähigen
 Regeln der uBlock-Origin-Standardlisten (Tests: `UblockSyntaxTest`, `ProtectionLevelTest`, Go `TestUblockSyntax`,
 `TestIncludes`, `TestOldSettingsGetUblockLists`).
