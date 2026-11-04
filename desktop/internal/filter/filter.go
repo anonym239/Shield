@@ -62,14 +62,21 @@ var ignored = map[string]bool{
 var allowedMods = map[string]bool{"important": true, "all": true, "dnstype=a": true, "dnstype=aaaa": true}
 var aggressiveMods = map[string]bool{"third-party": true, "3p": true}
 
+// blockOnlyMods: blocking the page itself ($doc) equals blocking the domain; never widens an exception.
+var blockOnlyMods = map[string]bool{"doc": true, "document": true}
+
 // Parse reads a list. aggressive also accepts $third-party rules (a DNS filter
 // cannot tell first- from third-party requests).
-func Parse(r io.Reader, aggressive bool) Parsed {
+func Parse(r io.Reader, aggressive bool) Parsed { return ParseList(r, aggressive, false) }
+
+// ParseList is Parse for adblock-syntax lists too (abp: uBlock Origin, EasyList),
+// where a bare token is a URL fragment and only ||domain^ rules count.
+func ParseList(r io.Reader, aggressive, abp bool) Parsed {
 	p := Parsed{Blocked: map[string]struct{}{}, Allowed: map[string]struct{}{}}
 	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 64*1024), 1024*1024)
 	for sc.Scan() {
-		kind, d := ParseLine(sc.Text(), aggressive)
+		kind, d := parseLine(sc.Text(), aggressive, abp)
 		switch kind {
 		case 'B':
 			p.Blocked[d] = struct{}{}
@@ -83,7 +90,9 @@ func Parse(r io.Reader, aggressive bool) Parsed {
 }
 
 // ParseLine returns 'B' (block), 'A' (allow), 'S' (skipped) or 0 (empty/comment).
-func ParseLine(raw string, aggressive bool) (byte, string) {
+func ParseLine(raw string, aggressive bool) (byte, string) { return parseLine(raw, aggressive, false) }
+
+func parseLine(raw string, aggressive, abp bool) (byte, string) {
 	line := strings.TrimSpace(raw)
 	if line == "" || line[0] == '!' || line[0] == '#' || line[0] == '[' {
 		return 0, ""
@@ -92,18 +101,21 @@ func ParseLine(raw string, aggressive bool) (byte, string) {
 		line = strings.TrimSpace(line[:i])
 	}
 	if strings.HasPrefix(line, "@@||") {
-		if d := adguard(line[4:], false); d != "" {
+		if d := adguard(line[4:], false, true); d != "" {
 			return 'A', d
 		}
 		return 'S', ""
 	}
 	if strings.HasPrefix(line, "||") {
-		if d := adguard(line[2:], aggressive); d != "" {
+		if d := adguard(line[2:], aggressive, false); d != "" {
 			return 'B', d
 		}
 		return 'S', ""
 	}
 	if strings.HasPrefix(line, "@@") || strings.HasPrefix(line, "/") || strings.Contains(line, "##") || strings.Contains(line, "#@#") {
+		return 'S', ""
+	}
+	if abp {
 		return 'S', ""
 	}
 	parts := strings.Fields(line)
@@ -128,12 +140,12 @@ func ParseLine(raw string, aggressive bool) (byte, string) {
 	return 'S', ""
 }
 
-func adguard(rest string, aggressive bool) string {
+func adguard(rest string, aggressive, exception bool) string {
 	body := rest
 	if i := strings.IndexByte(body, '$'); i >= 0 {
 		for _, m := range strings.Split(body[i+1:], ",") {
 			m = strings.ToLower(strings.TrimSpace(m))
-			if !allowedMods[m] && !(aggressive && aggressiveMods[m]) {
+			if !allowedMods[m] && !(!exception && blockOnlyMods[m]) && !(aggressive && aggressiveMods[m]) {
 				return ""
 			}
 		}

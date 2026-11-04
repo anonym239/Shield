@@ -31,6 +31,9 @@ Diese Seite beschreibt ehrlich, was Shield abdeckt und was nicht.
 | Kill-Switch | Greift nur in Stufe B mit aktivem WireGuard-Profil und nur für Shield selbst; ohne Android-Lockdown kann das System den Tunnel umgehen, wenn Shield beendet wird. | Android-Lockdown-Modus. |
 | Inhalte | Shield ist kein Virenscanner und prüft keine Dateien, Webseiten-Inhalte oder verschlüsselten Verkehr. | Updates, Play Protect, Vorsicht bei Links. |
 | IPv6-Erweiterungsheader, IP-Fragmente | In Stufe A werden nur einfache UDP/53-Pakete beantwortet (Resolver weicht sonst auf andere Wege aus). | Stufe B. |
+| YouTube-Werbung und Werbung vom selben Server | Werbung, die vom selben Server kommt wie der Inhalt (YouTube-Werbung über `googlevideo.com`, Werbung in Instagram/Facebook, Werbung in manchen Spielen), lässt sich per DNS nicht trennen. Ein Blocken würde den Inhalt mitblocken. | Im Browser das echte uBlock Origin nutzen (Firefox); für YouTube z. B. NewPipe. Siehe „Werbefrei im Browser & YouTube“ in der App. |
+| uBlock-Origin-Regeln nur teilweise | Shield übernimmt aus den uBlock-Origin-Listen nur Regeln für ganze Domains. Seitenelement-Regeln (`##`), Skript-Regeln (`+js`), Pfad-Regeln und Typ-Regeln (`$script`, `$image`) kann ein DNS-Filter nicht umsetzen. Ausnahmen werden nur übernommen, wenn sie eine ganze Domain betreffen und keine Zusatzbedingungen haben. | uBlock Origin im Browser ergänzt Shield. |
+| HTTPS-Inspection | Shield bricht absichtlich keinen verschlüsselten Verkehr auf. Apps vertrauen seit Android 7 keinen Nutzer-Zertifikaten, und eine solche Zwischenstelle wäre ein großes Sicherheitsrisiko. | – |
 | WebRTC | Browser können lokale IPs über WebRTC verraten. | WebRTC im Browser einschränken. |
 | Leak-Test | Nutzt externe Dienste (am.i.mullvad.net, bash.ws) und ist eine Momentaufnahme. | Regelmäßig wiederholen. |
 | Root/kompromittiertes Gerät | Mit Root-Rechten kann Malware jede App-Schutzschicht aushebeln. | Kein Root, aktuelle Sicherheitspatches. |
@@ -54,6 +57,12 @@ Verbesserung nutzen.
   umgehen den Filter, ab Stufe Maximum werden bekannte DoH-Server per Liste blockiert. Windows' eigene Verbindungstests
   und Verkehr vor dem Start von Shield sind nicht abgedeckt. Stürzt Shield ab, werden die DNS-Einstellungen beim
   nächsten Start oder über „Shield – DNS zurücksetzen“ wiederhergestellt.
+
+## Listen-Teile (`!#include`)
+
+uBlock-Origin-Listen bestehen aus mehreren Dateien. Shield folgt `!#include` nur zu Dateien im selben Ordner desselben
+HTTPS-Servers (kein `..`, keine fremden Hosts, kein `http`, höchstens 32 Teile, eine Ebene). Eine manipulierte Liste kann
+Shield deshalb nicht zum Abruf beliebiger Adressen bringen.
 
 ## Netzwerkzugriffe der App selbst
 

@@ -27,6 +27,8 @@ data class BlocklistSource(
     val url: String,
     val category: ListCategory,
     val defaultEnabled: Boolean,
+    /** Adblock syntax (uBlock Origin, EasyList): only `||domain^` rules count. */
+    val abp: Boolean = false,
 )
 
 data class ListStatus(val id: String, val rules: Int, val updatedAt: Long, val error: String?)
@@ -89,16 +91,21 @@ class BlocklistRepository @Inject constructor(
                             resp.isSuccessful -> {
                                 val tmp = File(dir, "${src.id}.tmp")
                                 resp.body!!.byteStream().use { input -> tmp.outputStream().use { input.copyTo(it) } }
-                                val parsed = tmp.bufferedReader().useLines { BlocklistParser.parse(it) }
-                                if (parsed.blocked.isEmpty()) throw IllegalStateException("Liste ist leer")
+                                val includes = tmp.bufferedReader().useLines { ListIncludes.find(it) }
+                                if (includes.isNotEmpty()) appendIncludes(src, includes, tmp)
+                                val parsed = tmp.bufferedReader().useLines { BlocklistParser.parse(it, true, src.abp) }
+                                if (parsed.blocked.isEmpty() && parsed.allowed.isEmpty()) {
+                                    throw IllegalStateException("Liste ist leer")
+                                }
                                 tmp.renameTo(File(dir, "${src.id}.txt"))
                                 meta.put(
                                     src.id,
                                     JSONObject()
                                         .put("updatedAt", System.currentTimeMillis())
                                         .put("rules", parsed.blocked.size)
-                                        .put("etag", resp.header("ETag") ?: "")
-                                        .put("lastModified", resp.header("Last-Modified") ?: ""),
+                                        // parts may change without the main file changing: always fetch those lists fully
+                                        .put("etag", if (includes.isEmpty()) resp.header("ETag") ?: "" else "")
+                                        .put("lastModified", if (includes.isEmpty()) resp.header("Last-Modified") ?: "" else ""),
                                 )
                             }
                             else -> throw IllegalStateException("HTTP ${resp.code}")
@@ -126,11 +133,27 @@ class BlocklistRepository @Inject constructor(
         }
     }
 
+    /** Downloads the `!#include` parts of a uBlock Origin list and appends them to [target]. */
+    private fun appendIncludes(src: BlocklistSource, includes: List<String>, target: File) {
+        target.appendText("\n")
+        for (name in includes) {
+            val url = ListIncludes.resolve(src.url, name)
+                ?: throw IllegalStateException("Unzulässiger Listenteil: $name")
+            http.newCall(Request.Builder().url(url).build()).execute().use { resp ->
+                if (!resp.isSuccessful) throw IllegalStateException("Listenteil $name: HTTP ${resp.code}")
+                java.io.FileOutputStream(target, true).use { out ->
+                    resp.body!!.byteStream().use { it.copyTo(out) }
+                    out.write('\n'.code)
+                }
+            }
+        }
+    }
+
     private suspend fun reloadEngine(enabled: Set<String>) = reloadMutex.withLock { reloadEngineLocked(enabled) }
 
     private suspend fun reloadEngineLocked(enabled: Set<String>) {
         val meta = readMeta()
-        val aggressive = settings.current().protectionLevel.aggressiveEasyPrivacy
+        val aggressive = settings.current().protectionLevel.aggressiveEasyPrivacy // name kept: also covers uBO/EasyList
         val loaded = SOURCES.filter { it.id in enabled }.mapNotNull { src ->
             try {
                 val reader = if (src.url.startsWith(ASSET)) {
@@ -140,8 +163,8 @@ class BlocklistRepository @Inject constructor(
                     if (!f.exists()) return@mapNotNull null
                     f.bufferedReader()
                 }
-                val agg = aggressive && src.id == "easyprivacy"
-                LoadedList(src.id, src.name, src.category, reader.useLines { BlocklistParser.parse(it, agg) })
+                val agg = aggressive && src.id in AGGRESSIVE_IDS
+                LoadedList(src.id, src.name, src.category, reader.useLines { BlocklistParser.parse(it, agg, src.abp) })
             } catch (e: Exception) {
                 ShieldLog.e("Lists", "parse ${src.id} failed", e)
                 null
@@ -184,6 +207,12 @@ class BlocklistRepository @Inject constructor(
 
         /** Lists shipped inside the APK (work offline, no download). */
         const val ASSET = "asset:"
+        private const val UBO = "https://ublockorigin.github.io/uAssets/filters"
+        /** Lists whose `$third-party` rules are taken from level STRICT on. */
+        val AGGRESSIVE_IDS = setOf(
+            "easyprivacy", "easylist", "easylist_germany", "ublock_filters", "ublock_badware", "ublock_privacy",
+            "ublock_quick_fixes", "ublock_annoyances", "ublock_cookies",
+        )
         private const val HAGEZI = "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock"
 
         val SOURCES = listOf(
@@ -193,11 +222,32 @@ class BlocklistRepository @Inject constructor(
             ),
             BlocklistSource(
                 "easyprivacy", "EasyPrivacy",
-                "https://easylist.to/easylist/easyprivacy.txt", ListCategory.TRACKING, true,
+                "https://easylist.to/easylist/easyprivacy.txt", ListCategory.TRACKING, true, abp = true,
             ),
             BlocklistSource(
-                "urlhaus", "URLhaus Malware",
-                "https://urlhaus.abuse.ch/downloads/hostfile/", ListCategory.MALWARE, true,
+                // the old hostfile URL answers HTTP 410; this is the feed uBlock Origin uses
+                "urlhaus", "URLhaus Malware (Online-URLs)",
+                "https://malware-filter.gitlab.io/urlhaus-filter/urlhaus-filter-agh-online.txt", ListCategory.MALWARE, true,
+            ),
+            // uBlock Origin default lists (same set uBO enables out of the box) – DNS-usable rules only
+            BlocklistSource("ublock_filters", "uBlock Origin – Werbung", "$UBO/filters.txt", ListCategory.ADS, true, abp = true),
+            BlocklistSource("ublock_badware", "uBlock Origin – Gefährliche Seiten", "$UBO/badware.txt", ListCategory.MALWARE, true, abp = true),
+            BlocklistSource("ublock_privacy", "uBlock Origin – Privatsphäre", "$UBO/privacy.txt", ListCategory.TRACKING, true, abp = true),
+            BlocklistSource("ublock_quick_fixes", "uBlock Origin – Schnellkorrekturen", "$UBO/quick-fixes.txt", ListCategory.ADS, true, abp = true),
+            BlocklistSource("ublock_unbreak", "uBlock Origin – Reparaturen (Ausnahmen)", "$UBO/unbreak.txt", ListCategory.ADS, true, abp = true),
+            BlocklistSource("easylist", "EasyList", "https://easylist.to/easylist/easylist.txt", ListCategory.ADS, true, abp = true),
+            BlocklistSource(
+                "easylist_germany", "EasyList Germany",
+                "https://easylist.to/easylistgermany/easylistgermany.txt", ListCategory.ADS, true, abp = true,
+            ),
+            BlocklistSource(
+                "peter_lowe", "Peter Lowe – Werbe- und Tracking-Server",
+                "https://pgl.yoyo.org/adservers/serverlist.php?hostformat=hosts&showintro=0&mimetype=plaintext",
+                ListCategory.ADS, true,
+            ),
+            BlocklistSource("ublock_annoyances", "uBlock Origin – Störelemente", "$UBO/annoyances.txt", ListCategory.ADS, false, abp = true),
+            BlocklistSource(
+                "ublock_cookies", "uBlock Origin – Cookie-Hinweise", "$UBO/annoyances-cookies.txt", ListCategory.ADS, false, abp = true,
             ),
             BlocklistSource(
                 "phishing_army", "Phishing Army",

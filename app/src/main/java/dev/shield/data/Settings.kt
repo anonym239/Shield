@@ -8,7 +8,7 @@ enum class TunnelMode { DNS_ONLY, FULL }
  * STRICT additionally blocks app telemetry (Firebase, Crashlytics, analytics SDKs), MAXIMUM adds
  * large threat feeds, DNS-bypass protection and forces the full tunnel with kill switch.
  */
-enum class ProtectionLevel(val lists: Set<String>, val aggressiveEasyPrivacy: Boolean) {
+enum class ProtectionLevel(levelLists: Set<String>, val aggressiveEasyPrivacy: Boolean) {
     STANDARD(setOf("adguard_dns", "easyprivacy", "urlhaus", "phishing_army"), false),
     STRICT(setOf("adguard_dns", "easyprivacy", "urlhaus", "phishing_army", "builtin_telemetry", "hagezi_pro"), true),
     MAXIMUM(
@@ -20,6 +20,9 @@ enum class ProtectionLevel(val lists: Set<String>, val aggressiveEasyPrivacy: Bo
     ),
     ;
 
+    /** Every level always contains uBlock Origin's default lists. */
+    val lists: Set<String> = levelLists + UBLOCK_LISTS
+
     /** Settings implied by the level (lists, tunnel, kill switch). */
     fun applyTo(s: Settings): Settings = s.copy(
         protectionLevel = this,
@@ -28,6 +31,12 @@ enum class ProtectionLevel(val lists: Set<String>, val aggressiveEasyPrivacy: Bo
         killSwitch = if (this == MAXIMUM) true else s.killSwitch,
     )
 }
+
+/** uBlock Origin's out-of-the-box lists (mirrors BlocklistRepository.UBLOCK_DEFAULTS). */
+val UBLOCK_LISTS = setOf(
+    "ublock_filters", "ublock_badware", "ublock_privacy", "ublock_quick_fixes", "ublock_unbreak",
+    "easylist", "easylist_germany", "peter_lowe",
+)
 
 /** How blocked domains are answered. */
 enum class BlockResponse { ZERO_IP, NXDOMAIN }

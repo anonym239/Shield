@@ -11,7 +11,7 @@ und Sicherheits-Checks – in **einer** App, mit einem ruhigen Dashboard und ein
 
 | Bereich | Was Shield macht |
 |---|---|
-| DNS-Blocker | Systemweiter Filter mit AdGuard DNS Filter, EasyPrivacy, URLhaus (Malware) und Phishing-Listen. Automatisches Update alle 24 h (optional nur im WLAN). |
+| DNS-Blocker | Systemweiter Filter mit den Standardlisten von uBlock Origin (uBlock filters, Badware, Privacy, Quick fixes, Unbreak, EasyList, EasyPrivacy, Peter Lowe, URLhaus) plus EasyList Germany, AdGuard DNS Filter und Phishing-Listen. Automatisches Update alle 24 h (optional nur im WLAN). |
 | Verschlüsseltes DNS | Erlaubte Anfragen gehen per DNS-over-HTTPS an Quad9, Cloudflare, Mullvad, AdGuard oder einen eigenen Server – nie unverschlüsselt über Port 53. |
 | Eigene Regeln | Block- und Erlaubt-Liste mit Platzhaltern (`*.example.com`). Im Protokoll ein Tipp → „Blockieren“ / „Erlauben“. |
 | App-Firewall | Pro App: erlaubt / nur WLAN / nur Mobilfunk / blockiert. Im Modus „Nur DNS“ über DNS, im vollen Tunnel als echte Paket-Firewall. |
@@ -21,6 +21,10 @@ und Sicherheits-Checks – in **einer** App, mit einem ruhigen Dashboard und ein
 | Checks | Live-Selbsttest (alle 15 Min + auf Knopfdruck), Leak-Test (IP, Land, DNS-, IPv6-Leak), WLAN-, Geräte- und Berechtigungs-Check, Sicherheits-Score 0–100. |
 | Extras | Widget, Quick-Settings-Kachel, Panik-Knopf, verschlüsseltes Backup, Homelab-Kacheln, Wake-on-LAN, Nachtmodus, Datenspar-Modus, lokaler Wochenbericht. |
 | Datenschutz | Alles lokal (Room/DataStore). Keine Analytics, kein Firebase, keine Konten. Aufbewahrung einstellbar, „Kein Verlauf speichern“. |
+
+### Neu in 1.2
+- **uBlock-Origin-Regeln in jeder Stufe**: Shield lädt die Listen, die uBlock Origin standardmäßig nutzt (inklusive aller `!#include`-Teile), und wendet jede Regel an, die über DNS umsetzbar ist. Das verringert Werbung in Apps, Spielen und Browsern. Seitenelement- und Skript-Regeln wirken nur im Browser.
+- **„Werbefrei im Browser & YouTube“**: Anleitung mit Knöpfen für Firefox + uBlock Origin und NewPipe. Ehrlich: Die offizielle YouTube-App lässt sich per DNS nicht werbefrei machen.
 
 ### Neu in 1.1
 - **Power-Knopf** statt Schalter; nach dem Einschalten prüft Shield automatisch alle Schichten. „Geschützt“ erscheint erst, wenn der Selbsttest bestanden ist.

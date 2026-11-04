@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.FactCheck
 import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -108,6 +109,7 @@ fun SettingsScreen(onOpen: (String) -> Unit, vm: SettingsViewModel = hiltViewMod
         )
         Entry(Icons.Filled.Dns, R.string.set_protection, R.string.set_protection_sub) { onOpen(Routes.PROTECTION) }
         Entry(Icons.Filled.Rule, R.string.set_rules, R.string.set_rules_sub) { onOpen(Routes.RULES) }
+        Entry(Icons.Filled.Block, R.string.adfree_title, R.string.adfree_entry_sub) { onOpen(Routes.ADFREE) }
         Entry(Icons.Filled.VpnKey, R.string.set_vpn, R.string.set_vpn_sub) { onOpen(Routes.VPN) }
         Entry(Icons.Filled.FactCheck, R.string.set_checks, R.string.set_checks_sub) { onOpen(Routes.CHECKS) }
         Entry(Icons.Filled.PrivacyTip, R.string.set_privacy, R.string.set_privacy_sub) { onOpen(Routes.PRIVACY) }

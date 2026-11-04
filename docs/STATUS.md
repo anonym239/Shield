@@ -1,7 +1,13 @@
 # Status
 
-Stand: Version 1.1.5 (2026-11-04). Alle Phasen 0–7 aus `SPEC.md` §8 sind implementiert, dazu Shield für Windows,
-Schutzstufen, automatischer Selbsttest mit Selbstheilung, Ruhemodus und optionaler KI-Assistent.
+Stand: Version 1.2.0 (2026-11-04). Alle Phasen 0–7 aus `SPEC.md` §8 sind implementiert, dazu Shield für Windows,
+Schutzstufen, automatischer Selbsttest mit Selbstheilung, Ruhemodus, optionaler KI-Assistent und die DNS-fähigen
+Regeln der uBlock-Origin-Standardlisten (Tests: `UblockSyntaxTest`, `ProtectionLevelTest`, Go `TestUblockSyntax`,
+`TestIncludes`, `TestOldSettingsGetUblockLists`).
+
+Offen / Grenzen der uBlock-Origin-Integration: nur Domain-Regeln (keine kosmetischen, Skript- oder Pfad-Regeln);
+YouTube-Werbung in der offiziellen App ist per DNS nicht blockierbar; `!#if`-Bedingungen werden ignoriert (alle
+Zweige gelten).
 
 ## Fertig
 

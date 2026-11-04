@@ -11,6 +11,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  list-urls:
+    name: Blocklist URLs reachable
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: scripts/check-lists.sh
   go-core:
     name: Go core tests
     runs-on: ubuntu-latest

@@ -22,4 +22,25 @@ class ProtectionLevelTest {
         val back = ProtectionLevel.STANDARD.applyTo(s.copy(tunnelMode = TunnelMode.DNS_ONLY))
         assertEquals(TunnelMode.DNS_ONLY, back.effectiveTunnelMode)
     }
+
+    @Test
+    fun everyLevelContainsUblockOriginDefaults() {
+        ProtectionLevel.entries.forEach { assertTrue(it.name, it.lists.containsAll(UBLOCK_LISTS)) }
+        assertTrue(Settings().enabledLists.containsAll(UBLOCK_LISTS))
+    }
+
+    @Test
+    fun ublockListsExistAsSources() {
+        val ids = dev.shield.core.filter.BlocklistRepository.SOURCES.map { it.id }.toSet()
+        assertTrue(ids.containsAll(UBLOCK_LISTS))
+        ProtectionLevel.entries.forEach { assertTrue(it.name, ids.containsAll(it.lists)) }
+    }
+
+    @Test
+    fun migrationAddsUblockListsAndKeepsUserChoice() {
+        val stored = setOf("adguard_dns", "hagezi_pro")
+        val m = dev.shield.data.repo.migrateListSelection(stored)
+        assertTrue(m.containsAll(stored))
+        assertTrue(m.containsAll(UBLOCK_LISTS))
+    }
 }

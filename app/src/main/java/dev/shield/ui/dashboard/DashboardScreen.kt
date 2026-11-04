@@ -249,6 +249,28 @@ fun DashboardScreen(
             o.score.topFindings.forEach { f -> RecommendationRow(f, vm, onOpenSettings) }
         }
 
+        Spacer(Modifier.height(12.dp))
+        Card(
+            onClick = { onOpenSettings(Routes.ADFREE) },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+        ) {
+            androidx.compose.foundation.layout.Row(
+                Modifier.padding(16.dp),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Filled.Block, contentDescription = null)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.adfree_title), style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        stringResource(R.string.adfree_dashboard_sub),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
         val ai by vm.aiVerdict.collectAsStateWithLifecycle()
         if (settings.aiEnabled) ai?.let {
             Spacer(Modifier.height(12.dp))

@@ -2,6 +2,24 @@
 
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [SemVer](https://semver.org/lang/de/).
 
+## [1.2.0] – 2026-11-04
+
+### Hinzugefügt
+- **uBlock-Origin-Regeln** in jeder Schutzstufe (Android und Windows): uBlock filters (mit allen `!#include`-Teilen),
+  Badware, Privacy, Quick fixes, Unbreak, EasyList, EasyList Germany und Peter Lowe. Übernommen wird jede Regel, die
+  ein DNS-Filter umsetzen kann (`||domain^`, `$important`, `$all`, `$doc`; ab „Streng“ auch `$third-party`).
+  Optional: uBlock Annoyances und Cookie-Hinweise. Bestehende Installationen bekommen die Listen einmalig hinzu.
+- Seite **„Werbefrei im Browser & YouTube“** mit Knöpfen für Firefox + uBlock Origin und NewPipe, auf Windows eine
+  Karte mit Links zu Firefox + uBlock Origin bzw. uBlock Origin Lite.
+
+### Geändert
+- URLhaus nutzt jetzt den Feed von malware-filter (wie uBlock Origin); die alte Adresse antwortet mit HTTP 410.
+- Adblock-Listen (EasyList, EasyPrivacy, uBlock) werden streng gelesen: einzelne Wörter gelten dort nicht als Domain.
+- Listen-Ausnahmen mit `$doc` werden nie als komplette Domain-Freigabe übernommen.
+
+### Grenzen
+- YouTube-Werbung in der offiziellen App ist per DNS nicht blockierbar (gleiche Server wie die Videos).
+
 ## [1.1.5] – 2026-11-04
 
 ### Behoben

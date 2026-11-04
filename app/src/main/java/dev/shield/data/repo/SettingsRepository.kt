@@ -26,6 +26,11 @@ import javax.inject.Singleton
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
+const val LISTS_SCHEMA = 2
+
+/** Adds uBlock Origin's default lists to a stored selection (pure, unit-tested). */
+fun migrateListSelection(stored: Set<String>): Set<String> = stored + dev.shield.data.UBLOCK_LISTS
+
 @Singleton
 class SettingsRepository @Inject constructor(@ApplicationContext private val context: Context) {
 
@@ -67,6 +72,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val listsUpdatedAt = longPreferencesKey("lists_updated_at")
         val selfTest = stringPreferencesKey("self_test_json")
         val onboarding = booleanPreferencesKey("onboarding_done")
+        val listsSchema = intPreferencesKey("lists_schema")
     }
 
     val settings: Flow<Settings> = context.dataStore.data.map { it.toSettings() }.distinctUntilChanged()
@@ -88,6 +94,26 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
 
     val aiResultJson: Flow<String?> = context.dataStore.data.map { it[K.aiResult] }
     suspend fun setAiResultJson(json: String) = context.dataStore.edit { it[K.aiResult] = json }
+
+    /**
+     * One-time upgrade of stored list selections: 1.2.0 adds uBlock Origin's lists to every level.
+     * Returns true if the selection was changed.
+     */
+    suspend fun migrateLists(): Boolean {
+        var changed = false
+        context.dataStore.edit { prefs ->
+            if ((prefs[K.listsSchema] ?: 1) < LISTS_SCHEMA) {
+                val stored = prefs[K.lists]
+                if (stored != null) {
+                    val merged = migrateListSelection(stored)
+                    changed = merged != stored
+                    prefs[K.lists] = merged
+                }
+                prefs[K.listsSchema] = LISTS_SCHEMA
+            }
+        }
+        return changed
+    }
 
     val onboardingDone: Flow<Boolean> = context.dataStore.data.map { it[K.onboarding] ?: false }
     suspend fun setOnboardingDone() = context.dataStore.edit { it[K.onboarding] = true }

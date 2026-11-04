@@ -338,7 +338,9 @@ func (a *API) Serve(static fs.FS) error {
 			return
 		}
 		// only well-known help pages, never arbitrary URLs
-		for _, ok := range []string{"https://account.protonvpn.com/", "https://aistudio.google.com/", "https://github.com/anonym239/Shield"} {
+		for _, ok := range []string{"https://account.protonvpn.com/", "https://aistudio.google.com/", "https://github.com/anonym239/Shield",
+			"https://www.mozilla.org/firefox/", "https://addons.mozilla.org/firefox/addon/ublock-origin/",
+			"https://chromewebstore.google.com/detail/ublock-origin-lite/"} {
 			if strings.HasPrefix(in.URL, ok) {
 				_ = openURL(in.URL)
 				writeJSON(w, "ok")

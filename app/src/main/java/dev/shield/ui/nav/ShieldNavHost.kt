@@ -56,6 +56,7 @@ object Routes {
     const val EXTRAS = "settings/extras"
     const val DEBUG = "settings/debug"
     const val AI = "settings/ai"
+    const val ADFREE = "settings/adfree"
     fun appDetail(pkg: String) = "app/$pkg"
 }
 
@@ -122,6 +123,7 @@ fun ShieldNavHost() {
             composable(Routes.BACKUP) { BackupScreen(onBack = { nav.popBackStack() }) }
             composable(Routes.EXTRAS) { ExtrasScreen(onBack = { nav.popBackStack() }) }
             composable(Routes.DEBUG) { DebugScreen(onBack = { nav.popBackStack() }) }
+            composable(Routes.ADFREE) { dev.shield.ui.settings.AdFreeScreen(onBack = { nav.popBackStack() }) }
             composable(Routes.AI) { dev.shield.ui.settings.AiScreen(onBack = { nav.popBackStack() }) }
         }
     }

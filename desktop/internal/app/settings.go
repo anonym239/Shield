@@ -20,11 +20,32 @@ const (
 	Maximum  Level = "MAXIMUM"
 )
 
+// UblockLists are uBlock Origin's out-of-the-box lists – part of every level.
+var UblockLists = []string{"ublock_filters", "ublock_badware", "ublock_privacy", "ublock_quick_fixes", "ublock_unbreak",
+	"easylist", "easylist_germany", "peter_lowe"}
+
+// ListsSchema 2: 1.2.0 added uBlock Origin's lists to every level.
+const ListsSchema = 2
+
 var levelLists = map[Level][]string{
-	Standard: {"adguard_dns", "easyprivacy", "urlhaus", "phishing_army"},
-	Strict:   {"adguard_dns", "easyprivacy", "urlhaus", "phishing_army", "builtin_telemetry", "hagezi_pro"},
-	Maximum: {"adguard_dns", "easyprivacy", "urlhaus", "phishing_army", "phishing_filter", "builtin_telemetry",
-		"hagezi_pro_plus", "hagezi_tif", "hagezi_doh", "hagezi_native_winoffice"},
+	Standard: append([]string{"adguard_dns", "easyprivacy", "urlhaus", "phishing_army"}, UblockLists...),
+	Strict:   append([]string{"adguard_dns", "easyprivacy", "urlhaus", "phishing_army", "builtin_telemetry", "hagezi_pro"}, UblockLists...),
+	Maximum: append([]string{"adguard_dns", "easyprivacy", "urlhaus", "phishing_army", "phishing_filter", "builtin_telemetry",
+		"hagezi_pro_plus", "hagezi_tif", "hagezi_doh", "hagezi_native_winoffice"}, UblockLists...),
+}
+
+// MigrateLists adds uBlock Origin's lists to a selection stored by an older version.
+func (s Settings) MigrateLists() Settings {
+	if s.ListsSchema >= ListsSchema {
+		return s
+	}
+	for _, id := range UblockLists {
+		if !contains(s.Lists, id) {
+			s.Lists = append(s.Lists, id)
+		}
+	}
+	s.ListsSchema = ListsSchema
+	return s
 }
 
 // Upstream is a DNS-over-HTTPS server with bootstrap IPs.
@@ -55,10 +76,12 @@ type Settings struct {
 	AIEnabled       bool     `json:"aiEnabled"`
 	AIModel         string   `json:"aiModel"`
 	Autostart       bool     `json:"autostart"`
+	ListsSchema     int      `json:"listsSchema"`
 }
 
 func DefaultSettings() Settings {
-	return Settings{Level: Standard, Upstream: "QUAD9", Lists: levelLists[Standard], AutoHeal: true, KillSwitch: true, AIModel: "gemini-flash-latest"}
+	return Settings{Level: Standard, Upstream: "QUAD9", Lists: append([]string(nil), levelLists[Standard]...), AutoHeal: true,
+		KillSwitch: true, AIModel: "gemini-flash-latest", ListsSchema: ListsSchema}
 }
 
 // ApplyLevel sets the list preset (and the kill switch for Maximum).
@@ -110,7 +133,9 @@ type settingsStore struct {
 func loadSettings(dir string) *settingsStore {
 	st := &settingsStore{path: filepath.Join(dir, "settings.json"), s: DefaultSettings()}
 	if b, err := os.ReadFile(st.path); err == nil {
+		st.s.ListsSchema = 1 // a stored file without the field is from an older version
 		_ = json.Unmarshal(b, &st.s)
+		st.s = st.s.MigrateLists()
 	}
 	if st.s.AIModel == "" {
 		st.s.AIModel = "gemini-flash-latest"

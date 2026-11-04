@@ -21,26 +21,47 @@ var builtinTelemetry []byte
 
 const hagezi = "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock"
 
+const ubo = "https://ublockorigin.github.io/uAssets/filters"
+
 // Source is a subscribable list.
 type Source struct {
 	ID       string          `json:"id"`
 	Name     string          `json:"name"`
 	URL      string          `json:"-"`
 	Category filter.Category `json:"category"`
+	ABP      bool            `json:"-"` // adblock syntax (uBlock Origin, EasyList)
+}
+
+// aggressiveIDs: lists whose $third-party rules are taken from level STRICT on.
+var aggressiveIDs = map[string]bool{
+	"easyprivacy": true, "easylist": true, "easylist_germany": true, "ublock_filters": true, "ublock_badware": true,
+	"ublock_privacy": true, "ublock_quick_fixes": true, "ublock_annoyances": true, "ublock_cookies": true,
 }
 
 var Sources = []Source{
-	{"adguard_dns", "AdGuard DNS Filter", "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt", filter.Ads},
-	{"easyprivacy", "EasyPrivacy", "https://easylist.to/easylist/easyprivacy.txt", filter.Tracking},
-	{"urlhaus", "URLhaus Malware", "https://urlhaus.abuse.ch/downloads/hostfile/", filter.Malware},
-	{"phishing_army", "Phishing Army", "https://phishing.army/download/phishing_army_blocklist.txt", filter.Phishing},
-	{"phishing_filter", "Phishing Filter (malware-filter)", "https://malware-filter.gitlab.io/malware-filter/phishing-filter-agh.txt", filter.Phishing},
-	{"builtin_telemetry", "Shield Telemetrie-Liste (eingebaut)", "builtin", filter.Tracking},
-	{"hagezi_pro", "HaGeZi Pro", hagezi + "/pro.txt", filter.Tracking},
-	{"hagezi_pro_plus", "HaGeZi Pro++", hagezi + "/pro.plus.txt", filter.Tracking},
-	{"hagezi_tif", "HaGeZi Threat Intelligence (Medium)", hagezi + "/tif.medium.txt", filter.Malware},
-	{"hagezi_doh", "HaGeZi DNS-Umgehung (DoH/DoT-Server)", hagezi + "/doh.txt", filter.Malware},
-	{"hagezi_native_winoffice", "HaGeZi Windows/Office-Telemetrie", hagezi + "/native.winoffice.txt", filter.Tracking},
+	{"adguard_dns", "AdGuard DNS Filter", "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt", filter.Ads, false},
+	{"easyprivacy", "EasyPrivacy", "https://easylist.to/easylist/easyprivacy.txt", filter.Tracking, true},
+	// the old hostfile URL answers HTTP 410; this is the feed uBlock Origin uses
+	{"urlhaus", "URLhaus Malware (Online-URLs)", "https://malware-filter.gitlab.io/urlhaus-filter/urlhaus-filter-agh-online.txt", filter.Malware, false},
+	{"phishing_army", "Phishing Army", "https://phishing.army/download/phishing_army_blocklist.txt", filter.Phishing, false},
+	{"phishing_filter", "Phishing Filter (malware-filter)", "https://malware-filter.gitlab.io/malware-filter/phishing-filter-agh.txt", filter.Phishing, false},
+	// uBlock Origin default lists – DNS-usable rules only
+	{"ublock_filters", "uBlock Origin – Werbung", ubo + "/filters.txt", filter.Ads, true},
+	{"ublock_badware", "uBlock Origin – Gefährliche Seiten", ubo + "/badware.txt", filter.Malware, true},
+	{"ublock_privacy", "uBlock Origin – Privatsphäre", ubo + "/privacy.txt", filter.Tracking, true},
+	{"ublock_quick_fixes", "uBlock Origin – Schnellkorrekturen", ubo + "/quick-fixes.txt", filter.Ads, true},
+	{"ublock_unbreak", "uBlock Origin – Reparaturen (Ausnahmen)", ubo + "/unbreak.txt", filter.Ads, true},
+	{"easylist", "EasyList", "https://easylist.to/easylist/easylist.txt", filter.Ads, true},
+	{"easylist_germany", "EasyList Germany", "https://easylist.to/easylistgermany/easylistgermany.txt", filter.Ads, true},
+	{"peter_lowe", "Peter Lowe – Werbe- und Tracking-Server", "https://pgl.yoyo.org/adservers/serverlist.php?hostformat=hosts&showintro=0&mimetype=plaintext", filter.Ads, false},
+	{"ublock_annoyances", "uBlock Origin – Störelemente", ubo + "/annoyances.txt", filter.Ads, true},
+	{"ublock_cookies", "uBlock Origin – Cookie-Hinweise", ubo + "/annoyances-cookies.txt", filter.Ads, true},
+	{"builtin_telemetry", "Shield Telemetrie-Liste (eingebaut)", "builtin", filter.Tracking, false},
+	{"hagezi_pro", "HaGeZi Pro", hagezi + "/pro.txt", filter.Tracking, false},
+	{"hagezi_pro_plus", "HaGeZi Pro++", hagezi + "/pro.plus.txt", filter.Tracking, false},
+	{"hagezi_tif", "HaGeZi Threat Intelligence (Medium)", hagezi + "/tif.medium.txt", filter.Malware, false},
+	{"hagezi_doh", "HaGeZi DNS-Umgehung (DoH/DoT-Server)", hagezi + "/doh.txt", filter.Malware, false},
+	{"hagezi_native_winoffice", "HaGeZi Windows/Office-Telemetrie", hagezi + "/native.winoffice.txt", filter.Tracking, false},
 }
 
 // ListStatus is shown in the UI.
@@ -114,7 +135,7 @@ func (l *lists) reload(s Settings) {
 			r = f
 		}
 		loaded = append(loaded, filter.List{ID: src.ID, Name: src.Name, Category: src.Category,
-			Parsed: filter.Parse(r, aggressive && src.ID == "easyprivacy")})
+			Parsed: filter.ParseList(r, aggressive && aggressiveIDs[src.ID], src.ABP)})
 	}
 	l.engine.SetLists(loaded)
 	logf("Lists: %d geladen, %d Regeln", len(loaded), l.engine.RuleCount())
@@ -199,14 +220,44 @@ func (l *lists) download(src Source, force bool) error {
 	if err != nil {
 		return err
 	}
-	if len(filter.Parse(bytes.NewReader(body), true).Blocked) == 0 {
+	includes := filter.FindIncludes(body)
+	for _, name := range includes {
+		part, err := l.fetchInclude(src.URL, name)
+		if err != nil {
+			return err
+		}
+		body = append(append(body, '\n'), part...)
+	}
+	p := filter.ParseList(bytes.NewReader(body), true, src.ABP)
+	if len(p.Blocked) == 0 && len(p.Allowed) == 0 {
 		return fmt.Errorf("Liste ist leer")
 	}
 	if err := os.WriteFile(filepath.Join(l.dir, src.ID+".txt"), body, 0o600); err != nil {
 		return err
 	}
-	l.meta[src.ID] = listMeta{UpdatedAt: time.Now().UnixMilli(), ETag: resp.Header.Get("ETag")}
+	etag := resp.Header.Get("ETag")
+	if len(includes) > 0 {
+		etag = "" // parts may change without the main file changing
+	}
+	l.meta[src.ID] = listMeta{UpdatedAt: time.Now().UnixMilli(), ETag: etag}
 	return nil
+}
+
+// fetchInclude downloads one "!#include" part of a uBlock Origin list (same host only).
+func (l *lists) fetchInclude(base, name string) ([]byte, error) {
+	u := filter.ResolveInclude(base, name)
+	if u == "" {
+		return nil, fmt.Errorf("unzulässiger Listenteil: %s", name)
+	}
+	resp, err := l.http.Get(u)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Listenteil %s: HTTP %d", name, resp.StatusCode)
+	}
+	return io.ReadAll(io.LimitReader(resp.Body, 32<<20))
 }
 
 // missing reports whether an enabled list has never been downloaded.
