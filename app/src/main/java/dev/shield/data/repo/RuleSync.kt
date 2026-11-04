@@ -28,6 +28,14 @@ class RuleSync @Inject constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var started = false
 
+    private suspend fun download() {
+        try {
+            blocklists.update()
+        } catch (e: Exception) {
+            ShieldLog.e("RuleSync", "list download failed", e)
+        }
+    }
+
     @Synchronized
     fun start() {
         if (started) return
@@ -43,15 +51,16 @@ class RuleSync @Inject constructor(
                 blocklists.loadFromDisk()
                 val enabled = settings.current().enabledLists
                 val missing = blocklists.state.value.lists.values.any { it.id in enabled && it.rules == 0 }
-                if (missing) blocklists.update()
+                // downloads never block reacting to setting changes (they serialise themselves)
+                if (missing) launch { download() }
             } catch (e: Exception) {
                 ShieldLog.e("RuleSync", "initial list load failed", e)
             }
             // reload when the selection of lists changes
             settings.settings.map { it.enabledLists to it.protectionLevel }.distinctUntilChanged().drop(1).collect {
-                // apply built-in and already downloaded lists immediately, then download the rest
+                // apply built-in and already downloaded lists immediately, download the rest in the background
                 blocklists.loadFromDisk()
-                blocklists.update()
+                launch { download() }
             }
         }
     }

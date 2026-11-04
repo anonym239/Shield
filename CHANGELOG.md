@@ -2,6 +2,12 @@
 
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [SemVer](https://semver.org/lang/de/).
 
+## [1.1.4] – 2026-11-04
+
+### Behoben
+- Ein Wechsel der Schutzstufe oder der Listenauswahl wirkt sofort: eingebaute und bereits geladene Listen werden direkt
+  übernommen, Downloads laufen getrennt im Hintergrund und blockieren das Umschalten nicht mehr (Android).
+
 ## [1.1.3] – 2026-11-04
 
 ### Behoben
