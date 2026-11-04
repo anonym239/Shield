@@ -2,6 +2,23 @@
 
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [SemVer](https://semver.org/lang/de/).
 
+## [1.1.0] – 2026-11-04
+
+### Hinzugefügt
+- **Shield für Windows**: lokaler DNS-Filter mit DoH, Schutzstufen, eigene Regeln, Protokoll, WireGuard/Proton-VPN mit
+  Kill-Switch (WFP), Selbsttest, Selbstheilung, KI-Prüfung, Autostart, WebView2-Oberfläche. Der Installer installiert
+  Shield für Windows, die Android-App per USB ist optional.
+- Android: Power-Ring statt Schalter, automatischer Selbsttest nach jedem Start („Geschützt“ erst nach bestandenem Test).
+- Schutzstufen Standard / Streng / Maximum (eingebaute Telemetrie-Liste, strenge EasyPrivacy-Regeln, HaGeZi-Listen,
+  DoT-Sperre und erzwungener voller Tunnel bei Maximum).
+- Selbstheilung bei fehlgeschlagenem Selbsttest (max. 3× pro Stunde).
+- Einstellung „Keine Benachrichtigungen“.
+- Optionaler KI-Assistent mit eigenem Google-Gemini-Key (anonymisierte Daten, nur sichere Aktionen).
+- Geführte Proton-Einrichtung; das erste importierte VPN-Profil wird sofort verwendet.
+
+### Geändert
+- VPN-Karte zeigt „Nicht eingerichtet“ statt einer Warnung, solange kein Profil eingerichtet ist.
+
 ## [1.0.1] – 2026-11-03
 
 ### Behoben

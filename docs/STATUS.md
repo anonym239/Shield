@@ -1,6 +1,7 @@
 # Status
 
-Stand: Version 1.0.0 (2026-11-03). Alle Phasen 0–7 aus `SPEC.md` §8 sind implementiert.
+Stand: Version 1.1.0 (2026-11-04). Alle Phasen 0–7 aus `SPEC.md` §8 sind implementiert, dazu Shield für Windows,
+Schutzstufen, automatischer Selbsttest mit Selbstheilung, Ruhemodus und optionaler KI-Assistent.
 
 ## Fertig
 
@@ -26,11 +27,17 @@ Stand: Version 1.0.0 (2026-11-03). Alle Phasen 0–7 aus `SPEC.md` §8 sind impl
     und lässt sich wieder beenden.
   - Room-DAOs (Filter, Aufbewahrung, Aggregation).
 - Windows-Installer wird zur Probe gebaut.
+- **Shield für Windows**: Go-Unit-Tests (Filter, DNS-Codec, Resolver, WireGuard-Config, Selbstheilung, KI-Protokoll,
+  API-Sicherheit) und ein Ende-zu-Ende-Test auf `windows-latest`: Schutz einschalten, eigene Regel blockiert über den
+  Windows-Resolver, erlaubte Domain per DoH, Selbsttest, danach wird geprüft, ob der DNS wiederhergestellt ist.
 
 Der Emulator-Test hat einen echten Fehler gefunden, der behoben ist: In Stufe A schlug `protect()` auf dem
 noch unverbundenen DoH-Socket fehl, erlaubte Domains wurden nicht aufgelöst.
 
 ## Offen / nächste Schritte
+
+- Windows: WireGuard und Kill-Switch werden in CI nicht mit einem echten Server getestet (nur Bau und Konfiguration).
+- Windows: keine App-Firewall und keine Auswertung pro Programm (Windows bündelt DNS im Systemdienst).
 
 - WireGuard-Verbindung wird in CI nicht Ende-zu-Ende getestet (kein Test-Server); getestet sind Parser, UAPI-Erzeugung und Kill-Switch-Logik.
 - Detekt und ktlint laufen in CI nur informativ (noch nicht blockierend).

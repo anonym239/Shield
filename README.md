@@ -1,6 +1,6 @@
 # Shield
 
-**Ein Knopf → Handy geschützt.** Shield ist eine Open-Source-Sicherheits-App für Android (GPL-3.0):
+**Ein Knopf → Handy und PC geschützt.** Shield ist eine Open-Source-Sicherheits-App für Android (GPL-3.0):
 DNS-Blocker gegen Werbung, Tracker, Malware und Phishing, eine App-Firewall, ein WireGuard-VPN
 und Sicherheits-Checks – in **einer** App, mit einem ruhigen Dashboard und einem nachvollziehbaren Protokoll.
 
@@ -22,6 +22,26 @@ und Sicherheits-Checks – in **einer** App, mit einem ruhigen Dashboard und ein
 | Extras | Widget, Quick-Settings-Kachel, Panik-Knopf, verschlüsseltes Backup, Homelab-Kacheln, Wake-on-LAN, Nachtmodus, Datenspar-Modus, lokaler Wochenbericht. |
 | Datenschutz | Alles lokal (Room/DataStore). Keine Analytics, kein Firebase, keine Konten. Aufbewahrung einstellbar, „Kein Verlauf speichern“. |
 
+### Neu in 1.1
+- **Power-Knopf** statt Schalter; nach dem Einschalten prüft Shield automatisch alle Schichten. „Geschützt“ erscheint erst, wenn der Selbsttest bestanden ist.
+- **Schutzstufen Standard / Streng / Maximum**: Streng blockiert zusätzlich App-Telemetrie (Firebase-Logging, Crashlytics, App-Measurement, AppsFlyer, Werbe-SDKs …). Maximum blockiert außerdem Bedrohungs-Feeds und fremde DNS-Server und erzwingt vollen Tunnel und Kill-Switch.
+- **Selbstheilung**: Schlägt ein Test fehl, verbindet Shield neu oder lädt Listen neu (max. 3× pro Stunde).
+- **Keine Benachrichtigungen** (Ruhemodus), z. B. für Geräte von Angehörigen.
+- **KI-Assistent (optional)** mit eigenem Gemini-API-Key: tägliche Prüfung, nur anonyme Daten, nur sichere Aktionen.
+- **Proton VPN in Shield**: geführte Einrichtung, das erste importierte Profil wird direkt verwendet.
+- **Shield für Windows** (siehe unten).
+
+## Shield für Windows
+
+`Shield-Setup-<version>.exe` installiert die PC-Version:
+- lokaler DNS-Filter (127.0.0.1) mit denselben Listen, Schutzstufen und eigenen Regeln wie am Handy
+- verschlüsseltes DNS (DoH), CNAME-Cloaking-Schutz, Protokoll, 24-h-Diagramm
+- **WireGuard/Proton-VPN direkt in Shield** mit Kill-Switch (Windows-Filterplattform, wie bei WireGuard für Windows)
+- Selbsttest alle 15 Min + Selbstheilung, optional KI-Prüfung, „Mit Windows starten“
+- beim Beenden, nach einem Absturz und beim Deinstallieren werden die DNS-Einstellungen wiederhergestellt; zusätzlich gibt es die Verknüpfung „Shield – DNS zurücksetzen“
+
+Grenzen am PC: Windows bündelt DNS-Anfragen im Systemdienst, daher gibt es keine Auswertung pro Programm und keine App-Firewall. Shield braucht Administratorrechte. Die Android-App lässt sich im Installer optional per USB aufs Handy spielen.
+
 ## Screenshots
 
 Screenshots folgen, sobald die App auf einem Gerät läuft (`docs/screenshots/`).
@@ -36,10 +56,10 @@ Aufbau des Dashboards (SPEC §3.3): großer Status-Ring mit Schalter → 2×2-Ka
 3. Shield öffnen, Schalter antippen und die VPN-Anfrage von Android bestätigen.
 4. Empfohlen: Android-Einstellungen → Netzwerk → VPN → Shield → **Durchgehend aktives VPN** und **Verbindungen ohne VPN blockieren**.
 
-### Windows-Installer (`Shield-Setup-<version>.exe`)
-Shield ist eine Android-App und läuft **nicht** unter Windows. Der Setup-Installer ist ein Helfer für den PC:
-er legt die APK und die Android-Platform-Tools (ADB) ab und installiert Shield per USB auf ein angeschlossenes Handy
-(USB-Debugging muss am Handy an sein). Danach ist er nicht mehr nötig.
+### Windows (`Shield-Setup-<version>.exe`)
+Installer ausführen (Administratorrechte nötig) → Shield starten → Power-Knopf klicken. Für Proton: VPN-Tab →
+WireGuard-Datei für „Windows“ bei Proton erstellen und auswählen. Optional installiert der Installer zusätzlich die
+Android-App per USB auf ein Handy.
 
 > Android erlaubt nur **eine** aktive VPN-App. Während Shield läuft, kann z. B. die Proton-App nicht parallel laufen.
 > Importiere Proton stattdessen als WireGuard-Profil (Proton-Konto → Downloads → WireGuard-Konfiguration).
@@ -61,6 +81,16 @@ scripts/build-gocore.sh            # erzeugt app/libs/shieldcore.aar
 
 Die Debug-APK liegt danach in `app/build/outputs/apk/debug/`.
 
+Windows-Version (auf Linux oder Windows, Go ≥ siehe `desktop/go.mod`):
+
+```bash
+cd desktop
+go test ./...
+go run github.com/tc-hib/go-winres@v0.3.3 make --in winres/winres.json --out cmd/shield/rsrc --arch amd64
+GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-H=windowsgui" -o Shield.exe ./cmd/shield
+# wintun.dll (https://www.wintun.net) neben Shield.exe legen
+```
+
 Release-Builds entstehen in GitHub Actions (`.github/workflows/release.yml`) beim Push eines Tags `v*` oder wenn die Datei `VERSION` geändert wird.
 Für eine stabile Signatur die Secrets `SHIELD_KEYSTORE_B64` (Base64 der `.jks`), `SHIELD_KEYSTORE_PASSWORD`,
 `SHIELD_KEY_ALIAS` und `SHIELD_KEY_PASSWORD` im Repository hinterlegen. Ohne Secrets wird ein einmaliger Schlüssel erzeugt.
@@ -78,6 +108,7 @@ core/checks Selbsttest, Leak-Test, WLAN-/Geräte-/Berechtigungs-Check, Score
 data/       Room, DAOs, Repositories, DataStore
 logging/    Logger-Fassade, Ereignisse, Export
 gocore/     Go-Netzwerkkern für den vollen Tunnel (gomobile)
+desktop/    Shield für Windows (Go: DNS-Filter, DoH, WireGuard, WebView2-UI)
 installer/  Windows-Installer (NSIS)
 ```
 

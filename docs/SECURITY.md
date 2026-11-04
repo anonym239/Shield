@@ -35,6 +35,26 @@ Diese Seite beschreibt ehrlich, was Shield abdeckt und was nicht.
 | Leak-Test | Nutzt externe Dienste (am.i.mullvad.net, bash.ws) und ist eine Momentaufnahme. | Regelmäßig wiederholen. |
 | Root/kompromittiertes Gerät | Mit Root-Rechten kann Malware jede App-Schutzschicht aushebeln. | Kein Root, aktuelle Sicherheitspatches. |
 
+## KI-Assistent (optional)
+
+Nur wenn du selbst einen Gemini-API-Key einträgst. Gesendet wird eine anonyme Zusammenfassung (Testergebnisse,
+Fehlerzähler, Einstellungen). Domains, IP-Adressen und Schlüssel werden vorher entfernt (unit-getestet). Die KI darf nur
+„neu verbinden“, „Listen aktualisieren“ und „Selbsttest“ auslösen, unbekannte Aktionen werden verworfen. Der Key liegt
+verschlüsselt (Android Keystore bzw. Windows DPAPI). Im kostenlosen Gemini-Tarif darf Google eingesendete Daten zur
+Verbesserung nutzen.
+
+## Shield für Windows
+
+* Lokaler DNS-Filter auf 127.0.0.1/::1, alle verbundenen Adapter zeigen darauf. Upstream nur per DoH über Bootstrap-IPs.
+* WireGuard über wireguard-go + Wintun. Der Kill-Switch nutzt die WFP-Firewall von WireGuard für Windows: ohne Tunnel
+  kein Verkehr, DNS nur an Shield.
+* Die Bedienoberfläche läuft nur auf 127.0.0.1 mit zufälligem Token pro Start, Host-Prüfung gegen DNS-Rebinding und
+  JSON-only-Requests gegen Cross-Site-Angriffe (getestet).
+* Grenzen: keine Zuordnung pro Programm, keine App-Firewall. Programme mit eigenem DoH (z. B. Browser mit „Sicheres DNS“)
+  umgehen den Filter, ab Stufe Maximum werden bekannte DoH-Server per Liste blockiert. Windows' eigene Verbindungstests
+  und Verkehr vor dem Start von Shield sind nicht abgedeckt. Stürzt Shield ab, werden die DNS-Einstellungen beim
+  nächsten Start oder über „Shield – DNS zurücksetzen“ wiederhergestellt.
+
 ## Netzwerkzugriffe der App selbst
 
 Nur: Blocklisten-Downloads, DoH-Upstream, VPN-Endpunkt und vom Nutzer ausgelöste Checks (Leak-Test, Homelab-Check,
