@@ -62,3 +62,19 @@ textarea { width:100%; font-family:Consolas,monospace; margin:8px 0; } #pasteNam
 .pre { background:var(--surface); padding:12px; border-radius:12px; overflow:auto; font:12px/1.4 Consolas,monospace; max-height:360px; white-space:pre-wrap; }
 .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--surface2); padding:12px 20px; border-radius:14px; opacity:0; transition:opacity .3s; pointer-events:none; }
 .toast.show { opacity:1; }
+
+.flag { border-radius:4px; object-fit:cover; box-shadow:0 0 0 1px var(--outline); vertical-align:middle; }
+.flag.none { display:inline-flex; align-items:center; justify-content:center; box-shadow:none; }
+.servers li.server { border:2px solid transparent; border-radius:16px; background:var(--surface); margin:6px 0; padding:8px 12px; flex-wrap:wrap; }
+.servers li.server.active { border-color:var(--primary); }
+.sv-main { flex:1; min-width:240px; } .sv-actions { display:flex; gap:8px; }
+dialog { background:var(--surface); color:var(--text); border:0; border-radius:24px; padding:24px; width:min(440px, calc(100vw - 32px)); text-align:center; }
+dialog::backdrop { background:rgba(0,0,0,.55); }
+dialog h2 { margin:8px 0 16px; font-size:20px; }
+.dlg-flag { display:flex; justify-content:center; min-height:54px; }
+.field { display:flex; flex-direction:column; gap:4px; text-align:left; margin:10px 0; font-weight:600; } .field input, .field select { width:100%; font-weight:400; }
+.speed { background:var(--surface2); text-align:center; }
+.metrics { display:flex; justify-content:space-around; gap:8px; margin:10px 0; } .metrics div { display:flex; flex-direction:column; align-items:center; }
+.mv { font-size:26px; font-weight:700; }
+.dlg-actions { display:flex; justify-content:center; gap:10px; margin-top:12px; }
+.card.info, .steps { text-align:left; }

@@ -289,6 +289,34 @@ func (a *API) Serve(static fs.FS) error {
 	api("/api/proton/status", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, e.ProtonState())
 	})
+	api("/api/vpn/edit", func(w http.ResponseWriter, r *http.Request) {
+		var in struct{ ID, Name, Country string }
+		if err := body(r, &in); err != nil {
+			fail(w, err)
+			return
+		}
+		if err := e.EditProfile(in.ID, in.Name, in.Country); err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, "ok")
+	})
+	api("/api/vpn/speedtest", func(w http.ResponseWriter, r *http.Request) {
+		var in struct{ ID string }
+		if err := body(r, &in); err != nil {
+			fail(w, err)
+			return
+		}
+		res, err := e.SpeedTest(in.ID)
+		if err != nil {
+			fail(w, err)
+			return
+		}
+		writeJSON(w, res)
+	})
+	api("/api/countries", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, CountriesSorted())
+	})
 	api("/api/vpn/delete", func(w http.ResponseWriter, r *http.Request) {
 		var in struct{ ID string }
 		if err := body(r, &in); err != nil {

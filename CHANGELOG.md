@@ -2,6 +2,27 @@
 
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionierung nach [SemVer](https://semver.org/lang/de/).
 
+## [1.3.0] – 2026-11-04
+
+### Hinzugefügt
+- **Server-Übersicht für VPN** (Android und Windows): jeder Server als Karte mit Flagge, Name, Land und letzter
+  Geschwindigkeit; antippen/klicken wechselt den Server sofort.
+- **„Welcher Server ist das?“** öffnet sich nach jedem Import: Name eingeben (z. B. „Niederlande #1“), das Land wird
+  dabei automatisch erkannt (oder aus 96 Ländern gewählt), Flagge wird angezeigt.
+- **Geschwindigkeitstest** pro Server (Download, Upload, Ping) über speed.cloudflare.com – nur auf Knopfdruck, ca. 35 MB.
+  Shield schaltet dafür auf den Server um und wartet auf die Verbindung.
+- Name und Land werden beim Import aus Protons Server-Angabe in der Datei übernommen (`# NL-FREE#12` → „Niederlande #12
+  (Free)“, Secure Core und US-Bundesstaaten werden richtig erkannt).
+
+### Behoben
+- Die VPN-Karte zeigt „Verbunden“ mit Flagge und Servername statt des Dateinamens (z. B. „Dokument“).
+  Nichtssagende Dateinamen werden nie mehr als Profilname verwendet.
+- Texte unter dem Power-Knopf und im VPN-Bereich sind mittig ausgerichtet.
+
+### Hinweis
+- Flaggen: Android nutzt die eingebauten Flaggen-Emojis; Windows bringt die Flaggen von *flag-icons* (MIT) mit, weil
+  Windows keine Flaggen-Emojis darstellt. Es wird dafür nichts zur Laufzeit aus dem Internet geladen.
+
 ## [1.2.0] – 2026-11-04
 
 ### Hinzugefügt

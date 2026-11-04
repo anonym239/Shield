@@ -43,7 +43,10 @@ class WgProfileRepository @Inject constructor(
     suspend fun all(): List<WgProfileEntity> = dao.all()
 
     suspend fun rename(id: String, name: String) {
-        dao.get(id)?.let { dao.upsert(it.copy(name = name)) }
+        val clean = name.trim().take(40)
+        if (clean.isEmpty()) return
+        dao.get(id)?.let { dao.upsert(it.copy(name = clean)) }
+        events.info(EventType.SETTINGS_CHANGED, "VPN-Server umbenannt: $clean")
     }
 
     suspend fun delete(id: String) = withContext(Dispatchers.IO) {

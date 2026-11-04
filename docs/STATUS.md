@@ -5,6 +5,10 @@ Schutzstufen, automatischer Selbsttest mit Selbstheilung, Ruhemodus, optionaler 
 Regeln der uBlock-Origin-Standardlisten (Tests: `UblockSyntaxTest`, `ProtectionLevelTest`, Go `TestUblockSyntax`,
 `TestIncludes`, `TestOldSettingsGetUblockLists`).
 
+Server-Übersicht mit Flaggen, Namen und Geschwindigkeitstest (Tests: `CountriesTest`, `SpeedMathTest`, Go
+`TestDetectCountry`, `TestGuessServer`, `TestSpeedMath`; Windows-Oberfläche per Browser-Screenshot geprüft) – nicht
+automatisch getestet: der Geschwindigkeitstest über einen echten VPN-Server.
+
 Proton-Ein-Knopf-Einrichtung (Tests: `WgConfigDetectorTest`, Go `TestLooksLikeWgConfig`, `TestFindNewConfig`) – nicht
 automatisch getestet: das Öffnen aus der Download-Meldung auf echten Geräten (hängt vom Browser ab) und ein echter
 Proton-Server.

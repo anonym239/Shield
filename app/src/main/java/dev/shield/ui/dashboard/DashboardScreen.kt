@@ -151,7 +151,13 @@ fun DashboardScreen(
             checking -> stringResource(R.string.reason_selftest_pending)
             else -> reasons.firstOrNull()?.let { stringResource(reasonText(it)) } ?: stringResource(R.string.tap_to_disable)
         }
-        Text(hint, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            hint,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
         Text(
             stringResource(levelName(settings.protectionLevel)),
             style = MaterialTheme.typography.labelLarge,
@@ -160,6 +166,7 @@ fun DashboardScreen(
         )
         Spacer(Modifier.height(20.dp))
 
+        val server by vm.activeServer.collectAsStateWithLifecycle()
         // 2x2 protection layer cards
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             LayerCard(
@@ -169,7 +176,7 @@ fun DashboardScreen(
             ) { onOpenLog() }
             LayerCard(
                 Modifier.weight(1f), Icons.Filled.VpnKey, stringResource(R.string.layer_vpn),
-                vpnLevel(tunnel), vpnTitle(tunnel), vpnDetail(tunnel),
+                vpnLevel(tunnel), vpnTitle(tunnel), vpnDetail(tunnel, server),
             ) { onOpenSettings(Routes.VPN) }
         }
         Spacer(Modifier.height(12.dp))
@@ -191,6 +198,7 @@ fun DashboardScreen(
                 stringResource(R.string.phishing_blocked, data.phishingToday),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
         }
 
@@ -585,16 +593,20 @@ private fun vpnLevel(t: TunnelState): StatusLevel? = when {
 
 @Composable
 private fun vpnTitle(t: TunnelState): String = when {
-    t.wgWanted -> t.wgProfileName ?: stringResource(R.string.layer_vpn)
+    t.wgWanted && t.wgConnected -> stringResource(R.string.vpn_title_connected)
+    t.wgWanted && t.running -> stringResource(R.string.vpn_title_connecting)
+    t.wgWanted -> stringResource(R.string.vpn_title_off)
     else -> stringResource(R.string.not_configured)
 }
 
 @Composable
-private fun vpnDetail(t: TunnelState): String {
+private fun vpnDetail(t: TunnelState, server: ActiveServer?): String {
     val ctx = LocalContext.current
+    val where = server?.let { s -> listOfNotNull(s.country?.let { dev.shield.core.vpn.Countries.flag(it) }, s.name).joinToString(" ") }
     return when {
-        t.wgWanted && t.wgConnected -> stringResource(R.string.vpn_connected_since, Format.duration(ctx, t.wgSince))
-        t.wgWanted -> stringResource(R.string.vpn_connecting)
+        t.wgWanted && t.wgConnected -> listOfNotNull(where, stringResource(R.string.vpn_connected_since, Format.duration(ctx, t.wgSince)))
+            .joinToString(" · ")
+        t.wgWanted -> where ?: stringResource(R.string.vpn_connecting)
         else -> stringResource(R.string.vpn_setup_hint)
     }
 }

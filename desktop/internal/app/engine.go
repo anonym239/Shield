@@ -51,9 +51,11 @@ func boolp(b bool) *bool { return &b }
 
 // Profile is the metadata of a WireGuard profile (config itself is DPAPI-encrypted).
 type Profile struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Endpoint string `json:"endpoint"`
+	ID       string       `json:"id"`
+	Name     string       `json:"name"`
+	Endpoint string       `json:"endpoint"`
+	Country  string       `json:"country,omitempty"`
+	Speed    *SpeedResult `json:"speed,omitempty"`
 }
 
 // Engine runs Shield for Windows.
@@ -395,16 +397,13 @@ func (e *Engine) ImportProfile(name, conf string) (Profile, error) {
 	}
 	idb := make([]byte, 8)
 	_, _ = rand.Read(idb)
-	p := Profile{ID: hex.EncodeToString(idb), Name: strings.TrimSpace(name), Endpoint: c.Peers[0].Endpoint}
-	if p.Name == "" {
-		p.Name = p.Endpoint
-	}
+	// never use a meaningless file name ("Dokument"): prefer Proton's server comment ("# NL-FREE#12")
+	code, guessed := GuessServer(strings.TrimSpace(name), conf, c.Peers[0].Endpoint)
+	p := Profile{ID: hex.EncodeToString(idb), Name: guessed, Endpoint: c.Peers[0].Endpoint, Country: code}
 	if err := os.WriteFile(filepath.Join(e.dir, "wg_"+p.ID+".bin"), enc, 0o600); err != nil {
 		return Profile{}, err
 	}
-	ps := append(e.Profiles(), p)
-	b, _ := json.Marshal(ps)
-	_ = os.WriteFile(e.profilesPath(), b, 0o600)
+	e.saveProfiles(append(e.Profiles(), p))
 	e.events.add("SETTINGS_CHANGED", "INFO", "WireGuard-Profil importiert: %s", p.Name)
 	if e.settings.get().ActiveProfile == "" {
 		e.settings.update(func(s Settings) Settings { s.ActiveProfile = p.ID; return s })

@@ -68,6 +68,11 @@ Verbesserung nutzen.
 - Windows: Nach „Mit Proton verbinden“ prüft Shield höchstens 15 Minuten lang nur neue `.conf`-Dateien im
   Download-Ordner und löscht die übernommene Datei, damit der Schlüssel nicht offen herumliegt.
 
+## Geschwindigkeitstest
+
+Nur auf Knopfdruck. Shield lädt bis zu 25 MB von `speed.cloudflare.com` und sendet 10 MB Zufallsdaten dorthin –
+über den gerade gewählten VPN-Server. Es werden keine Geräte- oder Nutzerdaten übertragen; das Ergebnis bleibt lokal.
+
 ## Listen-Teile (`!#include`)
 
 uBlock-Origin-Listen bestehen aus mehreren Dateien. Shield folgt `!#include` nur zu Dateien im selben Ordner desselben

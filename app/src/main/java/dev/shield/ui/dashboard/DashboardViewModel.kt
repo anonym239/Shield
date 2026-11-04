@@ -58,6 +58,8 @@ class DashboardViewModel @Inject constructor(
     dnsDao: DnsQueryDao,
     rules: RulesRepository,
     network: NetworkMonitor,
+    wgProfiles: dev.shield.core.wireguard.WgProfileRepository,
+    profileMeta: dev.shield.data.repo.ProfileMetaStore,
 ) : ViewModel() {
 
     val tunnel: StateFlow<TunnelState> = controller.state
@@ -68,6 +70,13 @@ class DashboardViewModel @Inject constructor(
         ai.lastVerdict.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     val settings: StateFlow<Settings> = settingsRepo.settings.stateIn(viewModelScope, SharingStarted.Eagerly, Settings())
+
+    /** Name and country of the selected VPN server (the name the user gave it, never a file name). */
+    val activeServer: StateFlow<ActiveServer?> = kotlinx.coroutines.flow.combine(
+        settingsRepo.settings, wgProfiles.profiles, profileMeta.all,
+    ) { s, ps, metas ->
+        ps.firstOrNull { it.id == s.activeProfileId }?.let { ActiveServer(it.name, metas[it.id]?.country) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     /** Re-evaluated every hour so "today" and the 24 h window move on. */
     private val clock = flow {
@@ -110,3 +119,5 @@ class DashboardViewModel @Inject constructor(
 
     fun updateLists() = viewModelScope.launch { blocklists.update(force = true) }
 }
+
+data class ActiveServer(val name: String, val country: String?)

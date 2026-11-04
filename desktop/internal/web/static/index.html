@@ -106,8 +106,9 @@
     <textarea id="pasteConf" rows="8" placeholder="[Interface] …"></textarea>
     <button id="pasteSave" class="btn">Importieren</button>
   </div>
-  <h3>Profile</h3>
-  <ul id="profiles" class="list"></ul>
+  <h3>Server</h3>
+  <p class="muted small">Klick auf einen Server, um zu wechseln. Über „Bearbeiten“ gibst du ihm einen Namen und ein Land und misst die Geschwindigkeit.</p>
+  <ul id="profiles" class="list servers"></ul>
   <label class="switch"><input type="checkbox" id="killSwitch"><span>Kill-Switch: kein Internet, wenn das VPN aktiv sein soll, aber getrennt ist (Windows-Firewall)</span></label>
 </section>
 
@@ -159,6 +160,25 @@
 </section>
 </main>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
+<dialog id="serverDlg" aria-labelledby="svTitle">
+  <div class="dlg-flag" id="svFlag"></div>
+  <h2 id="svTitle">Welcher Server ist das?</h2>
+  <label class="field">Name<input id="svName" maxlength="40" placeholder="z. B. Niederlande #1"></label>
+  <label class="field">Land<select id="svCountry"></select></label>
+  <div class="speed card">
+    <strong>Geschwindigkeit</strong>
+    <div class="metrics">
+      <div><span class="mv" id="svDown">–</span><span class="muted small">Mbit/s · Download</span></div>
+      <div><span class="mv" id="svUp">–</span><span class="muted small">Mbit/s · Upload</span></div>
+      <div><span class="mv" id="svPing">–</span><span class="muted small">ms · Ping</span></div>
+    </div>
+    <p class="muted small" id="svWhen"></p>
+    <button id="svTest" class="btn tonal">Geschwindigkeit testen</button>
+    <p class="muted small" id="svStatus" role="status" aria-live="polite"></p>
+  </div>
+  <p class="muted small" id="svEndpoint"></p>
+  <div class="dlg-actions"><button id="svCancel" class="btn outline">Abbrechen</button><button id="svSave" class="btn">Speichern</button></div>
+</dialog>
 <script src="app.js"></script>
 </body>
 </html>

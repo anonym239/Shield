@@ -29,6 +29,7 @@ func LooksLikeWgConfig(text string) bool {
 type ProtonStatus struct {
 	State   string `json:"state"` // "", WAITING, DONE, ERROR, TIMEOUT
 	Profile string `json:"profile,omitempty"`
+	ID      string `json:"id,omitempty"`
 	Message string `json:"message,omitempty"`
 }
 
@@ -123,7 +124,7 @@ func (e *Engine) ProtonConnect() ProtonStatus {
 				if err := os.Remove(path); err != nil {
 					e.events.add("ERROR", "WARNING", "Heruntergeladene Konfiguration konnte nicht gelöscht werden: %v", err)
 				}
-				e.setProton(stop, ProtonStatus{State: "DONE", Profile: p.Name})
+				e.setProton(stop, ProtonStatus{State: "DONE", Profile: p.Name, ID: p.ID})
 				return
 			}
 		}

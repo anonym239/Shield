@@ -11,6 +11,7 @@ data class TunnelState(
     val startedAt: Long = 0,
     val error: String? = null,
     val wgProfileName: String? = null,
+    val wgProfileId: String? = null,
     val wgWanted: Boolean = false,
     val wgConnected: Boolean = false,
     val wgSince: Long = 0,

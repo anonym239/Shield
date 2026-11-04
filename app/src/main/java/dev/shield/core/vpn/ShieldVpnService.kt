@@ -336,6 +336,7 @@ class ShieldVpnService : VpnService() {
                 mode = mode,
                 startedAt = if (prev.running && prev.mode == mode) prev.startedAt else System.currentTimeMillis(),
                 wgProfileName = wgName,
+                wgProfileId = sp.wgProfileId,
                 wgWanted = sp.wgProfileId != null,
                 killSwitch = settings.killSwitch && sp.wgProfileId != null,
                 addresses = addrs,

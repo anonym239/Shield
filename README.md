@@ -25,6 +25,7 @@ und Sicherheits-Checks – in **einer** App, mit einem ruhigen Dashboard und ein
 ### Neu in 1.2
 - **uBlock-Origin-Regeln in jeder Stufe**: Shield lädt die Listen, die uBlock Origin standardmäßig nutzt (inklusive aller `!#include`-Teile), und wendet jede Regel an, die über DNS umsetzbar ist. Das verringert Werbung in Apps, Spielen und Browsern. Seitenelement- und Skript-Regeln wirken nur im Browser.
 - **Proton VPN mit einem Knopf**: „Mit Proton verbinden“ → bei Proton „Herunterladen“ → in der Meldung „Öffnen“ – Shield richtet alles selbst ein (am PC wird die Datei automatisch aus dem Download-Ordner übernommen).
+- **Server-Übersicht (1.3)**: VPN-Server mit Flagge, eigenem Namen und Geschwindigkeitstest; mit einem Tipp wechseln.
 - **„Werbefrei im Browser & YouTube“**: Anleitung mit Knöpfen für Firefox + uBlock Origin und NewPipe. Ehrlich: Die offizielle YouTube-App lässt sich per DNS nicht werbefrei machen.
 
 ### Neu in 1.1
@@ -120,6 +121,9 @@ installer/  Windows-Installer (NSIS)
 Mehr: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [docs/SECURITY.md](docs/SECURITY.md) · [docs/STATUS.md](docs/STATUS.md) · [CHANGELOG.md](CHANGELOG.md) · [SPEC.md](SPEC.md)
 
 ## Lizenz
+
+Flaggen der Windows-Oberfläche: [flag-icons](https://github.com/lipis/flag-icons) (MIT, `desktop/internal/web/static/flags/LICENSE`).
+
 
 GPL-3.0-or-later, siehe [LICENSE](LICENSE). Verwendete Komponenten: wireguard-go (MIT), gVisor (Apache-2.0),
 OkHttp (Apache-2.0), AndroidX/Jetpack (Apache-2.0), Vico (Apache-2.0), ZXing Android Embedded (Apache-2.0).

@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -51,6 +52,8 @@ class SettingsViewModel @Inject constructor(
     private val rules: RulesRepository,
     private val profiles: WgProfileRepository,
     private val quickSetup: dev.shield.core.wireguard.VpnQuickSetup,
+    private val profileMeta: dev.shield.data.repo.ProfileMetaStore,
+    private val speedTest: dev.shield.core.checks.SpeedTest,
     private val checks: DeviceChecks,
     private val leakTest: LeakTest,
     private val status: StatusRepository,
@@ -127,6 +130,49 @@ class SettingsViewModel @Inject constructor(
     fun deleteProfile(id: String) = viewModelScope.launch {
         if (settings.value.activeProfileId == id) settingsRepo.update { it.copy(activeProfileId = null) }
         profiles.delete(id)
+        profileMeta.delete(id)
+    }
+
+    /** Country and last speed test per profile. */
+    val profileMetas: StateFlow<Map<String, dev.shield.data.repo.ProfileMeta>> =
+        profileMeta.all.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    /** Profile whose "Which server is this?" dialog should open (right after an import). */
+    val justImported: StateFlow<String?> = quickSetup.justImported
+    fun consumeJustImported() = quickSetup.consumeJustImported()
+
+    fun saveProfileDetails(id: String, name: String, country: String?) = viewModelScope.launch {
+        profiles.rename(id, name)
+        profileMeta.setCountry(id, country)
+    }
+
+    /** Id of the profile whose speed test is running, or null. */
+    val speedRunning = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+
+    /** Switches to [id] if needed, waits for the WireGuard handshake and measures the speed. */
+    fun runSpeedTest(id: String) = viewModelScope.launch {
+        if (speedRunning.value != null) return@launch
+        if (!settings.value.protectionEnabled) {
+            message(context.getString(dev.shield.R.string.speed_needs_protection))
+            return@launch
+        }
+        speedRunning.value = id
+        try {
+            if (settings.value.activeProfileId != id) settingsRepo.update { it.copy(activeProfileId = id) }
+            val connected = kotlinx.coroutines.withTimeoutOrNull(30_000) {
+                controller.state.first { it.wgConnected && it.wgProfileId == id }
+            }
+            if (connected == null) {
+                message(context.getString(dev.shield.R.string.speed_not_connected))
+                return@launch
+            }
+            kotlinx.coroutines.delay(1500) // let the new tunnel settle
+            profileMeta.setSpeed(id, speedTest.run())
+        } catch (e: java.io.IOException) {
+            message(context.getString(dev.shield.R.string.speed_failed, e.message ?: ""))
+        } finally {
+            speedRunning.value = null
+        }
     }
 
     fun setActiveProfile(id: String?) = update { it.copy(activeProfileId = id) }

@@ -61,7 +61,12 @@ function render() {
   // VPN card: neutral when not set up
   const v = S.vpn;
   if (!S.settings.activeProfile) { $("#vpnTitle").textContent = "Nicht eingerichtet"; $("#vpnDetail").textContent = "Proton & Co. hier verbinden"; dot("#dotVpn", "na"); }
-  else { $("#vpnTitle").textContent = v.name || "VPN"; $("#vpnDetail").textContent = v.connected ? "verbunden · Handshake vor " + v.handshakeAge + " s" : "verbindet …"; dot("#dotVpn", v.connected ? "ok" : "warn"); }
+  else {
+    const p = (S.profiles || []).find((x) => x.id === S.settings.activeProfile);
+    $("#vpnTitle").textContent = v.connected ? "Verbunden" : v.running ? "Verbinde …" : "Bereit";
+    $("#vpnDetail").innerHTML = p ? `${flagImg(p.country, 18)} ${esc(p.name)}` : "";
+    dot("#dotVpn", v.connected ? "ok" : "warn");
+  }
   const dnsOk = S.selftest && (S.selftest.results || []).find((r) => r.id === "SYSTEM_DNS");
   $("#netTitle").textContent = on ? "DNS: Shield" : "DNS: Standard";
   $("#netDetail").textContent = dnsOk ? dnsOk.detail : "System-DNS";
@@ -102,9 +107,55 @@ function renderSettings() {
   $("#aiKeyBox").classList.toggle("hidden", S.ai.hasKey); $("#aiKeySaved").classList.toggle("hidden", !S.ai.hasKey);
   if (document.activeElement !== $("#aiModel")) $("#aiModel").value = s.aiModel;
   $("#aiCheck").disabled = !S.ai.hasKey || S.ai.running;
-  $("#profiles").innerHTML = (S.profiles || []).map((p) => `<li><label class="switch" style="padding:0"><input type="radio" name="prof" data-prof="${p.id}" ${s.activeProfile === p.id ? "checked" : ""}><span>${esc(p.name)}<br><span class="muted small">${esc(p.endpoint)}${s.activeProfile === p.id && S.vpn.connected ? " · verbunden" : ""}</span></span></label><button class="btn outline" data-delprof="${p.id}">Löschen</button></li>`).join("")
-    + `<li><label class="switch" style="padding:0"><input type="radio" name="prof" data-prof="" ${!s.activeProfile ? "checked" : ""}><span>Kein VPN (nur Blocker)</span></label></li>`;
+  $("#profiles").innerHTML = (S.profiles || []).map((p) => serverItem(p, s)).join("")
+    + `<li class="server ${!s.activeProfile ? "active" : ""}"><label class="switch" style="padding:0"><input type="radio" name="prof" data-prof="" ${!s.activeProfile ? "checked" : ""}><span>Kein VPN (nur Blocker)</span></label></li>`;
   $("#about").textContent = `Shield für Windows ${S.version} · GPL-3.0 · Daten: %ProgramData%\\Shield · Kein Schutz ist lückenlos – Shield zeigt, welche Schichten aktiv und geprüft sind.`;
+}
+
+let COUNTRIES = [];
+const countryName = (code) => (COUNTRIES.find((c) => c.code === code) || {}).nameDe || "";
+function flagImg(code, h) {
+  if (!code) return `<span class="flag none" style="height:${h}px;width:${Math.round(h * 4 / 3)}px" aria-hidden="true">🌐</span>`;
+  return `<img class="flag" src="flags/${esc(code.toLowerCase())}.svg" height="${h}" width="${Math.round(h * 4 / 3)}" alt="Flagge ${esc(countryName(code))}">`;
+}
+const mb = (x) => (x < 10 ? x.toFixed(1).replace(".", ",") : Math.round(x));
+const speedText = (r) => r ? `↓ ${mb(r.down)}  ↑ ${mb(r.up)} Mbit/s · ${r.ping} ms` : "";
+function serverItem(p, s) {
+  const active = s.activeProfile === p.id;
+  const status = active ? (S.vpn.connected ? "verbunden" : "ausgewählt") : "klicken zum Wechseln";
+  return `<li class="server ${active ? "active" : ""}">
+    <label class="switch sv-main"><input type="radio" name="prof" data-prof="${p.id}" ${active ? "checked" : ""}>
+      ${flagImg(p.country, 30)}
+      <span><b>${esc(p.name)}</b><br><span class="muted small">${esc([countryName(p.country), status].filter(Boolean).join(" · "))}</span>
+      ${p.speed ? `<br><span class="small">${speedText(p.speed)}</span>` : ""}</span></label>
+    <span class="sv-actions"><button class="btn outline" data-editprof="${p.id}">Bearbeiten</button><button class="btn outline" data-delprof="${p.id}">Löschen</button></span></li>`;
+}
+function openServer(id) {
+  const p = (S.profiles || []).find((x) => x.id === id);
+  if (!p) return;
+  const d = $("#serverDlg");
+  d.dataset.id = id;
+  $("#svName").value = p.name;
+  $("#svCountry").innerHTML = `<option value="">Unbekannt – bitte wählen</option>` + COUNTRIES.map((c) => `<option value="${c.code}" ${c.code === p.country ? "selected" : ""}>${esc(c.nameDe)}</option>`).join("");
+  $("#svEndpoint").textContent = "Server-Adresse: " + p.endpoint;
+  d.dataset.touched = "";
+  showServerFlag();
+  showSpeed(p.speed);
+  $("#svStatus").textContent = S.phase === "RUNNING" ? "Shield schaltet dafür auf diesen Server um und misst über speed.cloudflare.com (ca. 35 MB Daten)." : "Zum Messen zuerst den Schutz einschalten.";
+  $("#svTest").disabled = S.phase !== "RUNNING";
+  d.showModal();
+}
+function showServerFlag() { $("#svFlag").innerHTML = flagImg($("#svCountry").value, 54); }
+function showSpeed(r) {
+  $("#svDown").textContent = r ? mb(r.down) : "–"; $("#svUp").textContent = r ? mb(r.up) : "–"; $("#svPing").textContent = r ? r.ping : "–";
+  $("#svWhen").textContent = r ? "Gemessen am " + new Date(r.at).toLocaleString("de-DE") : "Noch nicht gemessen";
+}
+// guess the country while typing ("Niederlande #1" → Niederlande)
+function guessCountry(text) {
+  const w = " " + text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim() + " ";
+  const hit = COUNTRIES.map((c) => [c, " " + c.nameDe.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ") + " "]).concat(COUNTRIES.map((c) => [c, " " + c.nameEn.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ") + " "]))
+    .sort((a, b) => b[1].length - a[1].length).find(([, n]) => w.includes(n));
+  return hit ? hit[0].code : "";
 }
 
 async function refresh() { try { S = await api("/api/state"); render(); } catch (e) { $("#errorText").textContent = "Keine Verbindung zum Shield-Dienst: " + e.message; } }
@@ -133,11 +184,12 @@ $$("[data-sub]").forEach((b) => b.onclick = () => { sub = b.dataset.sub; $$("[da
 $$("[data-filter]").forEach((b) => b.onclick = () => { qFilter = b.dataset.filter; $$("[data-filter]").forEach((x) => x.classList.toggle("active", x === b)); loadLog(); });
 $("#search").oninput = () => loadLog();
 document.addEventListener("click", (ev) => {
-  const t = ev.target.closest("[data-act],[data-unrule],[data-level],[data-delprof]");
+  const t = ev.target.closest("[data-act],[data-unrule],[data-level],[data-delprof],[data-editprof]");
   if (!t) return;
   if (t.dataset.act) act(() => api("/api/rules", { pattern: t.dataset.dom, allow: t.dataset.act === "allow" }), t.dataset.act === "allow" ? "Erlaubt" : "Blockiert").then(loadLog);
   if (t.dataset.unrule) act(() => api("/api/rules", { pattern: t.dataset.unrule, remove: true }), "Regel gelöscht");
   if (t.dataset.level) set({ level: t.dataset.level }, "Schutzstufe geändert – Listen werden geladen");
+  if (t.dataset.editprof) openServer(t.dataset.editprof);
   if (t.dataset.delprof && confirm("Profil und privaten Schlüssel löschen?")) act(() => api("/api/vpn/delete", { id: t.dataset.delprof }), "Profil gelöscht");
 });
 document.addEventListener("change", (ev) => {
@@ -152,7 +204,11 @@ $("#listsUpdate").onclick = () => act(() => api("/api/lists/update", {}), "Liste
 $("#ruleBlock").onclick = () => act(() => api("/api/rules", { pattern: $("#rulePattern").value, allow: false }), "Blockiert").then(() => ($("#rulePattern").value = ""));
 $("#ruleAllow").onclick = () => act(() => api("/api/rules", { pattern: $("#rulePattern").value, allow: true }), "Erlaubt").then(() => ($("#rulePattern").value = ""));
 $("#clearHistory").onclick = () => act(() => api("/api/history/clear", {}), "Verlauf gelöscht");
-$("#confFile").onchange = async (e) => { const f = e.target.files[0]; if (!f) return; const txt = await f.text(); act(() => api("/api/vpn/import", { name: f.name.replace(/\.conf$/i, ""), conf: txt }), "Profil importiert – VPN wird verbunden"); e.target.value = ""; };
+$("#confFile").onchange = async (e) => { const f = e.target.files[0]; if (!f) return; const txt = await f.text(); importAndName({ name: f.name.replace(/\.conf$/i, ""), conf: txt }); e.target.value = ""; };
+async function importAndName(data) {
+  try { const p = await api("/api/vpn/import", data); toast("Profil importiert – VPN wird verbunden"); await refresh(); openServer(p.id); return true; }
+  catch (e) { toast("⚠ " + e.message); return false; }
+}
 let protonTimer = null;
 function showProton(st) {
   const t = $("#protonStatus");
@@ -161,7 +217,7 @@ function showProton(st) {
   else if (st.state === "ERROR") t.textContent = "⚠ Fehler: " + st.message;
   else if (st.state === "TIMEOUT") t.textContent = "⚠ " + st.message + ". Bitte erneut versuchen.";
   else t.textContent = "";
-  if (st.state !== "WAITING" && protonTimer) { clearInterval(protonTimer); protonTimer = null; refresh(); }
+  if (st.state !== "WAITING" && protonTimer) { clearInterval(protonTimer); protonTimer = null; refresh().then(() => { if (st.state === "DONE" && st.id) openServer(st.id); }); }
 }
 $("#protonBtn").onclick = () => api("/api/proton/connect", {}).then((st) => {
   showProton(st);
@@ -169,7 +225,19 @@ $("#protonBtn").onclick = () => api("/api/proton/connect", {}).then((st) => {
   protonTimer = setInterval(() => api("/api/proton/status", {}).then(showProton).catch((e) => showProton({ state: "ERROR", message: e.message })), 2000);
 }).catch((e) => showProton({ state: "ERROR", message: e.message }));
 $("#pasteBtn").onclick = () => $("#pasteBox").classList.toggle("hidden");
-$("#pasteSave").onclick = () => act(() => api("/api/vpn/import", { name: $("#pasteName").value, conf: $("#pasteConf").value }), "Profil importiert").then(() => { $("#pasteConf").value = ""; $("#pasteBox").classList.add("hidden"); });
+$("#pasteSave").onclick = () => importAndName({ name: $("#pasteName").value, conf: $("#pasteConf").value }).then((ok) => { if (ok) { $("#pasteConf").value = ""; $("#pasteBox").classList.add("hidden"); } });
+$("#svCountry").onchange = () => { $("#serverDlg").dataset.touched = "1"; showServerFlag(); };
+$("#svName").oninput = () => { if (!$("#serverDlg").dataset.touched) { const c = guessCountry($("#svName").value); if (c) { $("#svCountry").value = c; showServerFlag(); } } };
+$("#svCancel").onclick = () => $("#serverDlg").close();
+$("#svSave").onclick = () => { const d = $("#serverDlg"); act(() => api("/api/vpn/edit", { id: d.dataset.id, name: $("#svName").value, country: $("#svCountry").value }), "Gespeichert"); d.close(); };
+$("#svTest").onclick = async () => {
+  const id = $("#serverDlg").dataset.id;
+  $("#svTest").disabled = true; $("#svStatus").textContent = "⏳ Messe Geschwindigkeit …";
+  try { const r = await api("/api/vpn/speedtest", { id }); showSpeed(r); $("#svStatus").textContent = "✓ Fertig"; }
+  catch (e) { $("#svStatus").textContent = "⚠ " + e.message; }
+  $("#svTest").disabled = false; refresh();
+};
+api("/api/countries", {}).then((c) => { COUNTRIES = c; if (S) render(); }).catch((e) => toast("⚠ Länderliste: " + e.message));
 $("#aiKeySave").onclick = () => act(() => api("/api/ai/key", { key: $("#aiKey").value }), "Key gespeichert").then(() => ($("#aiKey").value = ""));
 $("#aiKeyDelete").onclick = () => act(() => api("/api/ai/key", { delete: true }), "Key gelöscht");
 $("#aiModel").onchange = (e) => set({ aiModel: e.target.value });

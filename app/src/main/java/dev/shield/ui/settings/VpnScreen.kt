@@ -88,25 +88,48 @@ fun VpnScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
             leadingContent = { RadioButton(selected = s.activeProfileId == null, onClick = { vm.setActiveProfile(null) }) },
         )
         if (profiles.isEmpty()) EmptyHint(stringResource(R.string.wg_empty))
+        val metas by vm.profileMetas.collectAsStateWithLifecycle()
+        val speedRunning by vm.speedRunning.collectAsStateWithLifecycle()
+        val justImported by vm.justImported.collectAsStateWithLifecycle()
+        var editId by rememberSaveable { mutableStateOf<String?>(null) }
+        androidx.compose.runtime.LaunchedEffect(justImported) {
+            justImported?.let {
+                editId = it
+                vm.consumeJustImported()
+            }
+        }
         profiles.forEach { p ->
-            val active = s.activeProfileId == p.id
-            ListItem(
-                headlineContent = { Text(p.name) },
-                supportingContent = {
-                    Text(
-                        p.endpoint + if (active && tunnel.wgConnected) " · " + stringResource(R.string.vpn_connected) else "",
-                        color = if (active && tunnel.wgConnected) LocalStatusColors.current.green else MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                },
-                leadingContent = { RadioButton(selected = active, onClick = { vm.setActiveProfile(p.id) }) },
-                trailingContent = {
-                    IconButton(onClick = { deleteId = p.id }) {
-                        Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.delete))
-                    }
-                },
+            ServerCard(
+                profile = p,
+                meta = metas[p.id],
+                active = s.activeProfileId == p.id,
+                connected = s.activeProfileId == p.id && tunnel.wgConnected && tunnel.wgProfileId == p.id,
+                testing = speedRunning == p.id,
+                onSelect = { vm.setActiveProfile(p.id) },
+                onEdit = { editId = p.id },
+                onDelete = { deleteId = p.id },
             )
         }
-        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        editId?.let { id ->
+            profiles.firstOrNull { it.id == id }?.let { p ->
+                ServerDialog(
+                    profile = p,
+                    meta = metas[p.id],
+                    testing = speedRunning == p.id,
+                    canTest = s.protectionEnabled,
+                    onSpeedTest = { vm.runSpeedTest(p.id) },
+                    onSave = { name, country ->
+                        vm.saveProfileDetails(p.id, name, country)
+                        editId = null
+                    },
+                    onDismiss = { editId = null },
+                )
+            }
+        }
+        Row(
+            Modifier.padding(16.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, androidx.compose.ui.Alignment.CenterHorizontally),
+        ) {
             Button(onClick = { fileLauncher.launch(arrayOf("*/*")) }, modifier = Modifier.heightIn(min = 48.dp)) {
                 Text(stringResource(R.string.wg_import_file))
             }
@@ -119,14 +142,18 @@ fun VpnScreen(onBack: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
                 )
             }, modifier = Modifier.heightIn(min = 48.dp)) { Text(stringResource(R.string.wg_import_qr)) }
         }
-        TextButton(onClick = { pasteDialog = true }, modifier = Modifier.padding(horizontal = 8.dp).heightIn(min = 48.dp)) {
+        TextButton(
+            onClick = { pasteDialog = true },
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp).heightIn(min = 48.dp),
+        ) {
             Text(stringResource(R.string.wg_import_paste))
         }
         Text(
             stringResource(R.string.wg_proton_hint),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         )
 
         SectionTitle(stringResource(R.string.kill_switch))
