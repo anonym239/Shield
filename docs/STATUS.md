@@ -5,6 +5,10 @@ Schutzstufen, automatischer Selbsttest mit Selbstheilung, Ruhemodus, optionaler 
 Regeln der uBlock-Origin-Standardlisten (Tests: `UblockSyntaxTest`, `ProtectionLevelTest`, Go `TestUblockSyntax`,
 `TestIncludes`, `TestOldSettingsGetUblockLists`).
 
+Proton-Ein-Knopf-Einrichtung (Tests: `WgConfigDetectorTest`, Go `TestLooksLikeWgConfig`, `TestFindNewConfig`) – nicht
+automatisch getestet: das Öffnen aus der Download-Meldung auf echten Geräten (hängt vom Browser ab) und ein echter
+Proton-Server.
+
 Offen / Grenzen der uBlock-Origin-Integration: nur Domain-Regeln (keine kosmetischen, Skript- oder Pfad-Regeln);
 YouTube-Werbung in der offiziellen App ist per DNS nicht blockierbar; `!#if`-Bedingungen werden ignoriert (alle
 Zweige gelten).

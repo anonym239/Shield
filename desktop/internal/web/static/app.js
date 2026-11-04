@@ -153,6 +153,21 @@ $("#ruleBlock").onclick = () => act(() => api("/api/rules", { pattern: $("#ruleP
 $("#ruleAllow").onclick = () => act(() => api("/api/rules", { pattern: $("#rulePattern").value, allow: true }), "Erlaubt").then(() => ($("#rulePattern").value = ""));
 $("#clearHistory").onclick = () => act(() => api("/api/history/clear", {}), "Verlauf gelöscht");
 $("#confFile").onchange = async (e) => { const f = e.target.files[0]; if (!f) return; const txt = await f.text(); act(() => api("/api/vpn/import", { name: f.name.replace(/\.conf$/i, ""), conf: txt }), "Profil importiert – VPN wird verbunden"); e.target.value = ""; };
+let protonTimer = null;
+function showProton(st) {
+  const t = $("#protonStatus");
+  if (st.state === "WAITING") t.textContent = "⏳ Warte auf die heruntergeladene Datei …";
+  else if (st.state === "DONE") t.textContent = "✓ „" + st.profile + "“ eingerichtet – Shield verbindet und prüft jetzt alles.";
+  else if (st.state === "ERROR") t.textContent = "⚠ Fehler: " + st.message;
+  else if (st.state === "TIMEOUT") t.textContent = "⚠ " + st.message + ". Bitte erneut versuchen.";
+  else t.textContent = "";
+  if (st.state !== "WAITING" && protonTimer) { clearInterval(protonTimer); protonTimer = null; refresh(); }
+}
+$("#protonBtn").onclick = () => api("/api/proton/connect", {}).then((st) => {
+  showProton(st);
+  if (protonTimer) clearInterval(protonTimer);
+  protonTimer = setInterval(() => api("/api/proton/status", {}).then(showProton).catch((e) => showProton({ state: "ERROR", message: e.message })), 2000);
+}).catch((e) => showProton({ state: "ERROR", message: e.message }));
 $("#pasteBtn").onclick = () => $("#pasteBox").classList.toggle("hidden");
 $("#pasteSave").onclick = () => act(() => api("/api/vpn/import", { name: $("#pasteName").value, conf: $("#pasteConf").value }), "Profil importiert").then(() => { $("#pasteConf").value = ""; $("#pasteBox").classList.add("hidden"); });
 $("#aiKeySave").onclick = () => act(() => api("/api/ai/key", { key: $("#aiKey").value }), "Key gespeichert").then(() => ($("#aiKey").value = ""));

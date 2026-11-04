@@ -283,6 +283,12 @@ func (a *API) Serve(static fs.FS) error {
 		}
 		writeJSON(w, p)
 	})
+	api("/api/proton/connect", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, e.ProtonConnect())
+	})
+	api("/api/proton/status", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, e.ProtonState())
+	})
 	api("/api/vpn/delete", func(w http.ResponseWriter, r *http.Request) {
 		var in struct{ ID string }
 		if err := body(r, &in); err != nil {

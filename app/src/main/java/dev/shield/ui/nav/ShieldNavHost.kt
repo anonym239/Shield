@@ -70,8 +70,14 @@ private val tabs = listOf(
 )
 
 @Composable
-fun ShieldNavHost() {
+fun ShieldNavHost(openRoute: String? = null, onRouteOpened: () -> Unit = {}) {
     val nav = rememberNavController()
+    androidx.compose.runtime.LaunchedEffect(openRoute) {
+        if (openRoute != null) {
+            nav.navigate(openRoute) { launchSingleTop = true }
+            onRouteOpened()
+        }
+    }
     val entry by nav.currentBackStackEntryAsState()
     val dest = entry?.destination
     val showBar = tabs.any { t -> dest?.hierarchy?.any { it.route == t.route } == true }

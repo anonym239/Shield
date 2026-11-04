@@ -22,6 +22,7 @@ var builtinTelemetry []byte
 const hagezi = "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock"
 
 const ubo = "https://ublockorigin.github.io/uAssets/filters"
+const uboMirror = "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters"
 
 // Source is a subscribable list.
 type Source struct {
@@ -30,6 +31,7 @@ type Source struct {
 	URL      string          `json:"-"`
 	Category filter.Category `json:"category"`
 	ABP      bool            `json:"-"` // adblock syntax (uBlock Origin, EasyList)
+	Mirror   string          `json:"-"` // same content, tried if URL fails
 }
 
 // aggressiveIDs: lists whose $third-party rules are taken from level STRICT on.
@@ -39,29 +41,29 @@ var aggressiveIDs = map[string]bool{
 }
 
 var Sources = []Source{
-	{"adguard_dns", "AdGuard DNS Filter", "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt", filter.Ads, false},
-	{"easyprivacy", "EasyPrivacy", "https://easylist.to/easylist/easyprivacy.txt", filter.Tracking, true},
+	{"adguard_dns", "AdGuard DNS Filter", "https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt", filter.Ads, false, ""},
+	{"easyprivacy", "EasyPrivacy", "https://easylist.to/easylist/easyprivacy.txt", filter.Tracking, true, ""},
 	// the old hostfile URL answers HTTP 410; this is the feed uBlock Origin uses
-	{"urlhaus", "URLhaus Malware (Online-URLs)", "https://malware-filter.gitlab.io/urlhaus-filter/urlhaus-filter-agh-online.txt", filter.Malware, false},
-	{"phishing_army", "Phishing Army", "https://phishing.army/download/phishing_army_blocklist.txt", filter.Phishing, false},
-	{"phishing_filter", "Phishing Filter (malware-filter)", "https://malware-filter.gitlab.io/malware-filter/phishing-filter-agh.txt", filter.Phishing, false},
+	{"urlhaus", "URLhaus Malware (Online-URLs)", "https://malware-filter.gitlab.io/urlhaus-filter/urlhaus-filter-agh-online.txt", filter.Malware, false, ""},
+	{"phishing_army", "Phishing Army", "https://phishing.army/download/phishing_army_blocklist.txt", filter.Phishing, false, ""},
+	{"phishing_filter", "Phishing Filter (malware-filter)", "https://malware-filter.gitlab.io/malware-filter/phishing-filter-agh.txt", filter.Phishing, false, ""},
 	// uBlock Origin default lists – DNS-usable rules only
-	{"ublock_filters", "uBlock Origin – Werbung", ubo + "/filters.txt", filter.Ads, true},
-	{"ublock_badware", "uBlock Origin – Gefährliche Seiten", ubo + "/badware.txt", filter.Malware, true},
-	{"ublock_privacy", "uBlock Origin – Privatsphäre", ubo + "/privacy.txt", filter.Tracking, true},
-	{"ublock_quick_fixes", "uBlock Origin – Schnellkorrekturen", ubo + "/quick-fixes.txt", filter.Ads, true},
-	{"ublock_unbreak", "uBlock Origin – Reparaturen (Ausnahmen)", ubo + "/unbreak.txt", filter.Ads, true},
-	{"easylist", "EasyList", "https://easylist.to/easylist/easylist.txt", filter.Ads, true},
-	{"easylist_germany", "EasyList Germany", "https://easylist.to/easylistgermany/easylistgermany.txt", filter.Ads, true},
-	{"peter_lowe", "Peter Lowe – Werbe- und Tracking-Server", "https://pgl.yoyo.org/adservers/serverlist.php?hostformat=hosts&showintro=0&mimetype=plaintext", filter.Ads, false},
-	{"ublock_annoyances", "uBlock Origin – Störelemente", ubo + "/annoyances.txt", filter.Ads, true},
-	{"ublock_cookies", "uBlock Origin – Cookie-Hinweise", ubo + "/annoyances-cookies.txt", filter.Ads, true},
-	{"builtin_telemetry", "Shield Telemetrie-Liste (eingebaut)", "builtin", filter.Tracking, false},
-	{"hagezi_pro", "HaGeZi Pro", hagezi + "/pro.txt", filter.Tracking, false},
-	{"hagezi_pro_plus", "HaGeZi Pro++", hagezi + "/pro.plus.txt", filter.Tracking, false},
-	{"hagezi_tif", "HaGeZi Threat Intelligence (Medium)", hagezi + "/tif.medium.txt", filter.Malware, false},
-	{"hagezi_doh", "HaGeZi DNS-Umgehung (DoH/DoT-Server)", hagezi + "/doh.txt", filter.Malware, false},
-	{"hagezi_native_winoffice", "HaGeZi Windows/Office-Telemetrie", hagezi + "/native.winoffice.txt", filter.Tracking, false},
+	{"ublock_filters", "uBlock Origin – Werbung", ubo + "/filters.txt", filter.Ads, true, uboMirror + "/filters.txt"},
+	{"ublock_badware", "uBlock Origin – Gefährliche Seiten", ubo + "/badware.txt", filter.Malware, true, uboMirror + "/badware.txt"},
+	{"ublock_privacy", "uBlock Origin – Privatsphäre", ubo + "/privacy.txt", filter.Tracking, true, uboMirror + "/privacy.txt"},
+	{"ublock_quick_fixes", "uBlock Origin – Schnellkorrekturen", ubo + "/quick-fixes.txt", filter.Ads, true, uboMirror + "/quick-fixes.txt"},
+	{"ublock_unbreak", "uBlock Origin – Reparaturen (Ausnahmen)", ubo + "/unbreak.txt", filter.Ads, true, uboMirror + "/unbreak.txt"},
+	{"easylist", "EasyList", "https://easylist.to/easylist/easylist.txt", filter.Ads, true, ""},
+	{"easylist_germany", "EasyList Germany", "https://easylist.to/easylistgermany/easylistgermany.txt", filter.Ads, true, ""},
+	{"peter_lowe", "Peter Lowe – Werbe- und Tracking-Server", "https://pgl.yoyo.org/adservers/serverlist.php?hostformat=hosts&showintro=0&mimetype=plaintext", filter.Ads, false, ""},
+	{"ublock_annoyances", "uBlock Origin – Störelemente", ubo + "/annoyances.txt", filter.Ads, true, uboMirror + "/annoyances.txt"},
+	{"ublock_cookies", "uBlock Origin – Cookie-Hinweise", ubo + "/annoyances-cookies.txt", filter.Ads, true, uboMirror + "/annoyances-cookies.txt"},
+	{"builtin_telemetry", "Shield Telemetrie-Liste (eingebaut)", "builtin", filter.Tracking, false, ""},
+	{"hagezi_pro", "HaGeZi Pro", hagezi + "/pro.txt", filter.Tracking, false, ""},
+	{"hagezi_pro_plus", "HaGeZi Pro++", hagezi + "/pro.plus.txt", filter.Tracking, false, ""},
+	{"hagezi_tif", "HaGeZi Threat Intelligence (Medium)", hagezi + "/tif.medium.txt", filter.Malware, false, ""},
+	{"hagezi_doh", "HaGeZi DNS-Umgehung (DoH/DoT-Server)", hagezi + "/doh.txt", filter.Malware, false, ""},
+	{"hagezi_native_winoffice", "HaGeZi Windows/Office-Telemetrie", hagezi + "/native.winoffice.txt", filter.Tracking, false, ""},
 }
 
 // ListStatus is shown in the UI.
@@ -198,7 +200,16 @@ func (l *lists) updateOnce(s Settings, force bool) bool {
 
 func (l *lists) download(src Source, force bool) error {
 	l.events.add("NETWORK_ACCESS", "INFO", "Blockliste laden: %s", src.Name)
-	req, _ := http.NewRequest(http.MethodGet, src.URL, nil)
+	err := l.downloadFrom(src, src.URL, force)
+	if err != nil && src.Mirror != "" {
+		logf("Lists: %s via %s failed (%v), trying mirror", src.ID, src.URL, err)
+		err = l.downloadFrom(src, src.Mirror, force)
+	}
+	return err
+}
+
+func (l *lists) downloadFrom(src Source, url string, force bool) error {
+	req, _ := http.NewRequest(http.MethodGet, url, nil)
 	m := l.meta[src.ID]
 	if !force && m.ETag != "" {
 		req.Header.Set("If-None-Match", m.ETag)
@@ -222,7 +233,7 @@ func (l *lists) download(src Source, force bool) error {
 	}
 	includes := filter.FindIncludes(body)
 	for _, name := range includes {
-		part, err := l.fetchInclude(src.URL, name)
+		part, err := l.fetchInclude(url, name)
 		if err != nil {
 			return err
 		}

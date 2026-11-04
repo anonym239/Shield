@@ -252,3 +252,12 @@ func openURL(u string) error {
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	return cmd.Start()
 }
+
+// downloadsDir is the user's Downloads folder (Known Folder, also when it was moved).
+func downloadsDir() string {
+	if p, err := windows.KnownFolderPath(windows.FOLDERID_Downloads, 0); err == nil && p != "" {
+		return p
+	}
+	h, _ := os.UserHomeDir()
+	return h + `\Downloads`
+}

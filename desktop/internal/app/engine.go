@@ -58,6 +58,7 @@ type Profile struct {
 
 // Engine runs Shield for Windows.
 type Engine struct {
+	proton   protonWatch
 	dir      string
 	settings *settingsStore
 	events   *eventLog

@@ -9,16 +9,25 @@ Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionier
   Badware, Privacy, Quick fixes, Unbreak, EasyList, EasyList Germany und Peter Lowe. Übernommen wird jede Regel, die
   ein DNS-Filter umsetzen kann (`||domain^`, `$important`, `$all`, `$doc`; ab „Streng“ auch `$third-party`).
   Optional: uBlock Annoyances und Cookie-Hinweise. Bestehende Installationen bekommen die Listen einmalig hinzu.
+- **Proton VPN mit einem Knopf** („Mit Proton verbinden“): Android – Proton-Seite öffnet sich, nach „Herunterladen“
+  in der Download-Meldung „Öffnen“ → Shield übernimmt das Profil, aktiviert es, schaltet den Schutz ein und prüft alles.
+  Shield erscheint dafür beim Öffnen/Teilen von `.conf`-Dateien; eine kopierte Konfiguration wird beim Zurückkehren
+  erkannt (Zwischenablage wird danach geleert). Windows – Shield wartet nach dem Klick bis zu 15 Minuten auf die neue
+  Datei im Download-Ordner, übernimmt sie, verbindet und löscht die Datei (sie enthält den privaten Schlüssel).
 - Seite **„Werbefrei im Browser & YouTube“** mit Knöpfen für Firefox + uBlock Origin und NewPipe, auf Windows eine
   Karte mit Links zu Firefox + uBlock Origin bzw. uBlock Origin Lite.
 
 ### Geändert
+- Ein neu importiertes VPN-Profil wird sofort das aktive Profil.
+- uBlock-Origin-Listen haben einen Ausweich-Server (GitHub), falls GitHub Pages kurz nicht antwortet.
 - URLhaus nutzt jetzt den Feed von malware-filter (wie uBlock Origin); die alte Adresse antwortet mit HTTP 410.
 - Adblock-Listen (EasyList, EasyPrivacy, uBlock) werden streng gelesen: einzelne Wörter gelten dort nicht als Domain.
 - Listen-Ausnahmen mit `$doc` werden nie als komplette Domain-Freigabe übernommen.
 
 ### Grenzen
 - YouTube-Werbung in der offiziellen App ist per DNS nicht blockierbar (gleiche Server wie die Videos).
+- Shield kann die Daten der installierten Proton-App nicht lesen (Android-Sandbox, keine Proton-Schnittstelle) und
+  meldet sich bewusst nicht mit dem Proton-Passwort an. Darum der Weg über den Download der WireGuard-Datei.
 
 ## [1.1.5] – 2026-11-04
 

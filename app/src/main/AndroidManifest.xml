@@ -50,6 +50,33 @@
             </intent-filter>
         </activity>
 
+        <!-- One-tap VPN setup: opening or sharing a WireGuard .conf (e.g. from the Proton download) -->
+        <activity
+            android:name=".ImportActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:label="@string/import_activity_label"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter android:label="@string/import_activity_label">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:mimeType="application/x-wireguard-profile" />
+                <data android:mimeType="application/x-wireguard-config" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <intent-filter android:label="@string/import_activity_label">
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/x-wireguard-profile" />
+                <data android:mimeType="application/x-wireguard-config" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
         <activity
             android:name="com.journeyapps.barcodescanner.CaptureActivity"
             android:screenOrientation="fullSensor"

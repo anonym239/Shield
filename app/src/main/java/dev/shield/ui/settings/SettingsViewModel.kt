@@ -50,6 +50,7 @@ class SettingsViewModel @Inject constructor(
     private val blocklists: BlocklistRepository,
     private val rules: RulesRepository,
     private val profiles: WgProfileRepository,
+    private val quickSetup: dev.shield.core.wireguard.VpnQuickSetup,
     private val checks: DeviceChecks,
     private val leakTest: LeakTest,
     private val status: StatusRepository,
@@ -101,20 +102,25 @@ class SettingsViewModel @Inject constructor(
 
     fun removeRule(pattern: String) = viewModelScope.launch { rules.removeCustomRule(pattern) }
 
+    /** Imports a config, makes it the active profile and turns protection on (one-tap setup). */
     fun importProfile(name: String, text: String) = viewModelScope.launch {
         try {
-            val p = profiles.import(name, text)
-            // first profile: use it right away (Shield then connects through it)
-            if (settings.value.activeProfileId == null) settingsRepo.update { it.copy(activeProfileId = p.id) }
-            message(context.getString(dev.shield.R.string.profile_imported, p.name))
+            val r = quickSetup.importAndActivate(name, text)
+            message(
+                context.getString(
+                    if (r.needsVpnPermission) dev.shield.R.string.quick_setup_done_needs_on else dev.shield.R.string.quick_setup_done,
+                    r.profile.name,
+                ),
+            )
         } catch (e: Exception) {
+            dev.shield.logging.ShieldLog.e("Vpn", "profile import failed", e)
             message(context.getString(dev.shield.R.string.profile_import_failed, e.message ?: ""))
         }
     }
 
     fun importProfileFile(uri: Uri) = viewModelScope.launch {
         val text = runCatching { context.contentResolver.openInputStream(uri)?.use { String(it.readBytes()) } }.getOrNull()
-        val name = uri.lastPathSegment?.substringAfterLast('/')?.removeSuffix(".conf") ?: ""
+        val name = dev.shield.core.wireguard.WgConfigDetector.nameFromFile(uri.lastPathSegment)
         if (text == null) message(context.getString(dev.shield.R.string.profile_import_failed, "")) else importProfile(name, text)
     }
 

@@ -58,6 +58,16 @@ Verbesserung nutzen.
   und Verkehr vor dem Start von Shield sind nicht abgedeckt. Stürzt Shield ab, werden die DNS-Einstellungen beim
   nächsten Start oder über „Shield – DNS zurücksetzen“ wiederhergestellt.
 
+## Proton-/WireGuard-Einrichtung
+
+- Shield verarbeitet **nie** dein Proton-Passwort. Die Verbindung entsteht nur aus der WireGuard-Datei, die du selbst
+  bei Proton erzeugst. Der private Schlüssel daraus liegt verschlüsselt im Android-Keystore bzw. per DPAPI.
+- Android: Shield liest die Zwischenablage nur, während die VPN-Seite im Vordergrund ist, und nur um eine
+  WireGuard-Konfiguration zu erkennen (max. 64 KB). Nach dem Übernehmen wird die Zwischenablage geleert.
+  Geöffnete/geteilte Dateien werden auf 64 KB begrenzt und vor dem Import geprüft.
+- Windows: Nach „Mit Proton verbinden“ prüft Shield höchstens 15 Minuten lang nur neue `.conf`-Dateien im
+  Download-Ordner und löscht die übernommene Datei, damit der Schlüssel nicht offen herumliegt.
+
 ## Listen-Teile (`!#include`)
 
 uBlock-Origin-Listen bestehen aus mehreren Dateien. Shield folgt `!#include` nur zu Dateien im selben Ordner desselben

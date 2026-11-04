@@ -24,6 +24,7 @@ und Sicherheits-Checks – in **einer** App, mit einem ruhigen Dashboard und ein
 
 ### Neu in 1.2
 - **uBlock-Origin-Regeln in jeder Stufe**: Shield lädt die Listen, die uBlock Origin standardmäßig nutzt (inklusive aller `!#include`-Teile), und wendet jede Regel an, die über DNS umsetzbar ist. Das verringert Werbung in Apps, Spielen und Browsern. Seitenelement- und Skript-Regeln wirken nur im Browser.
+- **Proton VPN mit einem Knopf**: „Mit Proton verbinden“ → bei Proton „Herunterladen“ → in der Meldung „Öffnen“ – Shield richtet alles selbst ein (am PC wird die Datei automatisch aus dem Download-Ordner übernommen).
 - **„Werbefrei im Browser & YouTube“**: Anleitung mit Knöpfen für Firefox + uBlock Origin und NewPipe. Ehrlich: Die offizielle YouTube-App lässt sich per DNS nicht werbefrei machen.
 
 ### Neu in 1.1

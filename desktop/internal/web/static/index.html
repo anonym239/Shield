@@ -85,11 +85,18 @@
 <section id="vpn" class="tab">
   <div class="card info">Shield verbindet sich selbst per WireGuard mit deinem VPN-Anbieter. Blocker und Kill-Switch bleiben dabei aktiv. Die Proton-App muss dafür nicht laufen. Lass sie nicht gleichzeitig verbunden, sonst stören sich die beiden Tunnel.</div>
   <h3>Proton VPN einrichten</h3>
-  <ol class="steps">
-    <li>Bei <a href="https://account.protonvpn.com/downloads" target="_blank" rel="noopener">account.protonvpn.com</a> → „Downloads“ → „WireGuard-Konfiguration“.</li>
-    <li>Plattform „Windows“, Server/Land wählen, „Erstellen“ → .conf herunterladen.</li>
-    <li>Hier die Datei auswählen – fertig.</li>
-  </ol>
+  <div class="card">
+    <p>Einmal einrichten, danach verbindet Shield automatisch. So geht's:</p>
+    <ol class="steps">
+      <li>Auf <strong>„Mit Proton verbinden“</strong> klicken – die Proton-Seite öffnet sich (einmal anmelden).</li>
+      <li>Bei „WireGuard-Konfiguration“: Plattform „Windows“, ein Land wählen, „Erstellen“ und dann „Herunterladen“.</li>
+      <li>Fertig. Shield findet die Datei im Download-Ordner, übernimmt sie, verbindet und prüft alles. Die Datei wird danach gelöscht, weil sie deinen privaten Schlüssel enthält.</li>
+    </ol>
+    <button id="protonBtn" class="btn wide">Mit Proton verbinden</button>
+    <p id="protonStatus" class="muted" role="status" aria-live="polite"></p>
+    <p class="muted small">Proton erlaubt keiner anderen App, die Daten der Proton-App direkt zu lesen – darum dieser kurze Weg.</p>
+  </div>
+  <p class="muted small">Oder von Hand:</p>
   <div class="row gap">
     <label class="btn">.conf-Datei wählen<input id="confFile" type="file" accept=".conf,text/plain" hidden></label>
     <button id="pasteBtn" class="btn outline">Konfiguration einfügen</button>

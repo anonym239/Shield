@@ -3,7 +3,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package app
 
-import "errors"
+import (
+	"errors"
+	"os"
+	"path/filepath"
+)
 
 // Non-Windows builds exist only for unit tests and local development.
 
@@ -20,3 +24,8 @@ func unprotect(b []byte) ([]byte, error) {
 func setAutostart(bool) error { return nil }
 func isAdmin() bool           { return true }
 func openURL(string) error    { return nil }
+
+func downloadsDir() string {
+	h, _ := os.UserHomeDir()
+	return filepath.Join(h, "Downloads")
+}
