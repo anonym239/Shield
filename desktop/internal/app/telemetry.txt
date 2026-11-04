@@ -1,0 +1,96 @@
+! Shield built-in telemetry list (used at protection level "Streng" and "Maximum").
+! App analytics, crash reporting and ad/attribution SDKs that apps call in the background.
+! Blocking them does not break the apps' main function. Use "Erlauben" in the log if something breaks.
+! Firebase / Google analytics & logging
+||firebaselogging-pa.googleapis.com^
+||firebaselogging.googleapis.com^
+||app-measurement.com^
+||app-analytics-services.com^
+||app-analytics-services-att.com^
+||google-analytics.com^
+||analytics.google.com^
+||ssl.google-analytics.com^
+||stats.g.doubleclick.net^
+||googleadservices.com^
+||googlesyndication.com^
+||doubleclick.net^
+||adservice.google.com^
+||pagead2.googlesyndication.com^
+||firebase-settings.crashlytics.com^
+||crashlytics.com^
+||crashlyticsreports-pa.googleapis.com^
+! Attribution / analytics SDKs
+||appsflyer.com^
+||appsflyersdk.com^
+||adjust.com^
+||adjust.io^
+||branch.io^
+||amplitude.com^
+||mixpanel.com^
+||segment.io^
+||segment.com^
+||ingest.sentry.io^
+||bugsnag.com^
+||mobile-collector.newrelic.com^
+||browser-intake-datadoghq.com^
+||browser-intake-datadoghq.eu^
+||kochava.com^
+||singular.net^
+||flurry.com^
+||mparticle.com^
+||hotjar.com^
+||clarity.ms^
+||scorecardresearch.com^
+||braze.com^
+||braze.eu^
+||onesignal.com^
+||instabug.com^
+||apptentive.com^
+||smartlook.com^
+||uxcam.com^
+||appcenter.ms^
+||in.appcenter.ms^
+||launchdarkly.com^
+||app-measurement-cn.com^
+! Ad networks inside apps
+||unityads.unity3d.com^
+||applovin.com^
+||applvn.com^
+||vungle.com^
+||chartboost.com^
+||ironsrc.mobi^
+||supersonicads.com^
+||inmobi.com^
+||startappservice.com^
+||adcolony.com^
+||fyber.com^
+||mintegral.com^
+||mtgglobals.com^
+||pangle.io^
+||bytedance-ads.com^
+||an.facebook.com^
+||pixel.facebook.com^
+||ads.tiktok.com^
+||analytics.tiktok.com^
+||log.byteoversea.com^
+! Spotify & streaming ads / tracking
+||adeventtracker.spotify.com^
+||ads-fa.spotify.com^
+||spclient-ads.wg.spotify.com^
+||analytics.spotify.com^
+! Vendor telemetry (phones)
+||tracking.miui.com^
+||data.mistat.xiaomi.com^
+||data.mistat.india.xiaomi.com^
+||samsungads.com^
+||samsung-com.112.2o7.net^
+||logs.oneplus.cn^
+||analytics.oneplus.cn^
+! Microsoft / Windows telemetry
+||vortex.data.microsoft.com^
+||vortex-win.data.microsoft.com^
+||v10.events.data.microsoft.com^
+||v20.events.data.microsoft.com^
+||watson.telemetry.microsoft.com^
+||telemetry.microsoft.com^
+||browser.events.data.msn.com^

@@ -16,3 +16,6 @@ keystore.properties
 /installer/out/
 /installer/platform-tools/
 /installer/Shield.apk
+/installer/Shield.exe
+/installer/wintun.dll
+/installer/shield.ico

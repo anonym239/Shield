@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shield</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="tabs" role="tablist">
+  <div class="brand"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>Shield</div>
+  <button role="tab" data-tab="overview" class="active">Übersicht</button>
+  <button role="tab" data-tab="log">Protokoll</button>
+  <button role="tab" data-tab="vpn">VPN</button>
+  <button role="tab" data-tab="settings">Einstellungen</button>
+  <button role="tab" data-tab="debug">Debug</button>
+</nav>
+
+<main>
+<section id="overview" class="tab active">
+  <div class="hero">
+    <button id="power" class="ring off" aria-label="Schutz ein- oder ausschalten" role="switch" aria-checked="false">
+      <svg class="arc" viewBox="0 0 120 120" aria-hidden="true"><circle class="track" cx="60" cy="60" r="52"/><circle class="value" cx="60" cy="60" r="52"/></svg>
+      <span class="core">
+        <svg id="ringIcon" viewBox="0 0 24 24" aria-hidden="true"></svg>
+        <span id="ringText">Aus</span>
+      </span>
+    </button>
+    <p id="hint" class="muted">Tippen zum Einschalten</p>
+    <button id="levelChip" class="chip link">Stufe: Standard</button>
+    <p id="errorText" class="error"></p>
+  </div>
+
+  <div class="cards">
+    <div class="card"><div class="ct"><span>Blocker</span><span id="dotBlocker" class="dot"></span></div><div class="big" id="blockedToday">0</div><div class="muted">heute blockiert</div></div>
+    <div class="card link" data-go="vpn"><div class="ct"><span>VPN</span><span id="dotVpn" class="dot"></span></div><div class="big" id="vpnTitle">Nicht eingerichtet</div><div class="muted" id="vpnDetail">Proton &amp; Co. hier verbinden</div></div>
+    <div class="card"><div class="ct"><span>Netzwerk</span><span id="dotNet" class="dot"></span></div><div class="big" id="netTitle">–</div><div class="muted" id="netDetail">System-DNS</div></div>
+    <div class="card"><div class="ct"><span>Schutzstufe</span><span id="dotLevel" class="dot ok">✓</span></div><div class="big" id="levelTitle">Standard</div><div class="muted" id="rulesCount">0 Regeln</div></div>
+  </div>
+
+  <div class="card row">
+    <div><strong>Selbsttest</strong><div class="muted" id="testSummary">Noch nicht geprüft</div></div>
+    <button id="testBtn" class="btn tonal">Jetzt prüfen</button>
+  </div>
+  <ul id="testList" class="tests"></ul>
+
+  <div id="aiCard" class="card hidden"><strong id="aiTitle">KI-Prüfung</strong><p id="aiSummary"></p></div>
+
+  <h3>Letzte 24 Stunden</h3>
+  <div id="chart" class="chart" role="img" aria-label="Anfragen und Blockierungen der letzten 24 Stunden"></div>
+  <p class="muted small" id="chartSummary"></p>
+
+  <h3>Top 5 blockierte Domains</h3>
+  <ul id="topBlocked" class="list"></ul>
+
+  <button id="panicBtn" class="btn outline wide">✋ Panik-Knopf</button>
+</section>
+
+<section id="log" class="tab">
+  <div class="subtabs"><button class="chip active" data-sub="queries">Anfragen</button><button class="chip" data-sub="events">Ereignisse</button></div>
+  <div id="queriesPane">
+    <div class="filters">
+      <input id="search" type="search" placeholder="Domain suchen" aria-label="Domain suchen">
+      <button class="chip active" data-filter="">Alle</button>
+      <button class="chip" data-filter="BLOCKED">Blockiert</button>
+      <button class="chip" data-filter="ALLOWED">Erlaubt</button>
+    </div>
+    <p class="muted small">Windows bündelt DNS-Anfragen im System – deshalb zeigt Shield am PC keine einzelnen Programme an.</p>
+    <table class="table"><thead><tr><th>Zeit</th><th>Domain</th><th>Ergebnis</th><th>Liste / Regel</th><th></th></tr></thead><tbody id="queries"></tbody></table>
+  </div>
+  <div id="eventsPane" class="hidden"><table class="table"><tbody id="events"></tbody></table></div>
+</section>
+
+<section id="vpn" class="tab">
+  <div class="card info">Shield verbindet sich selbst per WireGuard mit deinem VPN-Anbieter. Blocker und Kill-Switch bleiben dabei aktiv. Die Proton-App muss dafür nicht laufen. Lass sie nicht gleichzeitig verbunden, sonst stören sich die beiden Tunnel.</div>
+  <h3>Proton VPN einrichten</h3>
+  <ol class="steps">
+    <li>Bei <a href="https://account.protonvpn.com/downloads" target="_blank" rel="noopener">account.protonvpn.com</a> → „Downloads“ → „WireGuard-Konfiguration“.</li>
+    <li>Plattform „Windows“, Server/Land wählen, „Erstellen“ → .conf herunterladen.</li>
+    <li>Hier die Datei auswählen – fertig.</li>
+  </ol>
+  <div class="row gap">
+    <label class="btn">.conf-Datei wählen<input id="confFile" type="file" accept=".conf,text/plain" hidden></label>
+    <button id="pasteBtn" class="btn outline">Konfiguration einfügen</button>
+  </div>
+  <div id="pasteBox" class="hidden">
+    <input id="pasteName" placeholder="Name (z. B. Proton NL)">
+    <textarea id="pasteConf" rows="8" placeholder="[Interface] …"></textarea>
+    <button id="pasteSave" class="btn">Importieren</button>
+  </div>
+  <h3>Profile</h3>
+  <ul id="profiles" class="list"></ul>
+  <label class="switch"><input type="checkbox" id="killSwitch"><span>Kill-Switch: kein Internet, wenn das VPN aktiv sein soll, aber getrennt ist (Windows-Firewall)</span></label>
+</section>
+
+<section id="settings" class="tab">
+  <h3>Schutzstufe</h3>
+  <div id="levels" class="levels"></div>
+  <p class="muted small">Strengere Stufen können einzelne Funktionen stören. Dann im Protokoll die Domain → „Erlauben“.</p>
+
+  <h3>Verschlüsseltes DNS</h3>
+  <select id="upstream" aria-label="DNS-Upstream"></select>
+  <div id="customBox" class="hidden">
+    <input id="customUrl" placeholder="https://…/dns-query">
+    <input id="customBoot" placeholder="Bootstrap-IP(s), z. B. 9.9.9.9">
+    <button id="customSave" class="btn">Speichern</button>
+  </div>
+
+  <h3>Blocklisten</h3>
+  <ul id="lists" class="list"></ul>
+  <button id="listsUpdate" class="btn tonal">Jetzt aktualisieren</button>
+
+  <h3>Eigene Regeln</h3>
+  <div class="row gap"><input id="rulePattern" placeholder="z. B. ads.example.com oder *.example.com"><button id="ruleBlock" class="btn">Blockieren</button><button id="ruleAllow" class="btn outline">Erlauben</button></div>
+  <ul id="rules" class="list"></ul>
+
+  <h3>Verhalten</h3>
+  <label class="switch"><input type="checkbox" id="autostart"><span>Mit Windows starten (Schutz läuft im Hintergrund)</span></label>
+  <label class="switch"><input type="checkbox" id="autoHeal"><span>Selbstheilung: bei Fehlern automatisch neu starten (max. 3× pro Stunde)</span></label>
+  <label class="switch"><input type="checkbox" id="noHistory"><span>Kein Verlauf speichern (nur Zähler)</span></label>
+  <button id="clearHistory" class="btn outline">Verlauf löschen</button>
+
+  <h3>KI-Assistent (Gemini)</h3>
+  <p class="muted small">Optional: Mit deinem eigenen Google-Gemini-API-Key prüft eine KI täglich, ob Shield zuverlässig läuft, und löst bei Bedarf eine Reparatur aus. Gesendet wird nur eine anonyme Zusammenfassung – keine Domains, keine IP-Adressen, keine Schlüssel. Die KI kann den Schutz nie abschalten. Im kostenlosen Gemini-Tarif darf Google eingesendete Daten zur Verbesserung nutzen. Key gratis: aistudio.google.com → „Get API key“.</p>
+  <div id="aiKeyBox" class="row gap"><input id="aiKey" type="password" placeholder="Gemini-API-Key einfügen"><button id="aiKeySave" class="btn">Speichern</button></div>
+  <div id="aiKeySaved" class="row gap hidden"><span>✓ Key gespeichert (verschlüsselt mit Windows DPAPI)</span><button id="aiKeyDelete" class="btn outline">Key löschen</button></div>
+  <label class="switch"><input type="checkbox" id="aiEnabled"><span>Täglich automatisch prüfen</span></label>
+  <div class="row gap"><input id="aiModel" placeholder="Modell"><button id="aiCheck" class="btn tonal">Jetzt prüfen</button></div>
+  <p id="aiResult" class="muted"></p>
+
+  <button id="quitBtn" class="btn outline">Shield beenden (DNS wird zurückgesetzt)</button>
+  <h3>Über</h3>
+  <p class="muted small" id="about"></p>
+</section>
+
+<section id="debug" class="tab">
+  <div class="row gap"><button id="dbgTest" class="btn">Selbsttest</button><button id="dbgRestart" class="btn outline">Schutz neu starten</button><button id="dbgLists" class="btn outline">Blocklisten neu laden</button></div>
+  <pre id="dbgState" class="pre"></pre>
+  <h3>Live-Log</h3>
+  <pre id="dbgLog" class="pre log"></pre>
+</section>
+</main>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="app.js"></script>
+</body>
+</html>

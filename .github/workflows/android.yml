@@ -57,6 +57,12 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
       - name: Windows installer smoke build (NSIS)
         run: |
+          (cd desktop && go run github.com/tc-hib/go-winres@v0.3.3 make --in winres/winres.json --out cmd/shield/rsrc --arch amd64 \
+            && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-H=windowsgui -s -w" -o ../installer/Shield.exe ./cmd/shield \
+            && cp winres/shield.ico ../installer/shield.ico)
+          curl -sSLo /tmp/wintun.zip https://www.wintun.net/builds/wintun-0.14.1.zip
+          echo "07c256185d6ee3652e09fa55c0b673e2624b565e02c4b9091c79ca7d2f24ef51  /tmp/wintun.zip" | sha256sum -c -
+          unzip -q -o /tmp/wintun.zip -d /tmp/ && cp /tmp/wintun/bin/amd64/wintun.dll installer/wintun.dll
           sudo apt-get update -qq && sudo apt-get install -y -qq nsis > /dev/null
           curl -sSLo /tmp/pt.zip https://dl.google.com/android/repository/platform-tools-latest-windows.zip
           unzip -q /tmp/pt.zip -d installer/

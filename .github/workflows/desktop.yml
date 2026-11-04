@@ -1,0 +1,56 @@
+name: Windows CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: desktop-${{ github.ref }}-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  unit:
+    name: Go unit tests (desktop)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: desktop/go.mod
+          cache-dependency-path: desktop/go.sum
+      - name: vet + test
+        working-directory: desktop
+        run: |
+          go vet ./...
+          GOOS=windows GOARCH=amd64 go vet ./...
+          go test ./...
+
+  windows-e2e:
+    name: Windows end-to-end (real DNS on Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: desktop/go.mod
+          cache-dependency-path: desktop/go.sum
+      - name: Build (console variant for the test)
+        working-directory: desktop
+        run: |
+          go run github.com/tc-hib/go-winres@v0.3.3 make --in winres/winres.json --out cmd/shield/rsrc --arch amd64
+          go build -o shield-ci.exe ./cmd/shield
+      - name: Shield selftest on Windows
+        working-directory: desktop
+        shell: pwsh
+        run: |
+          Get-DnsClientServerAddress -AddressFamily IPv4 | Format-Table -AutoSize
+          ./shield-ci.exe --ci-selftest
+          $code = $LASTEXITCODE
+          Write-Host "== DNS after stop (must be restored)"
+          Get-DnsClientServerAddress -AddressFamily IPv4 | Format-Table -AutoSize
+          $still = Get-DnsClientServerAddress -AddressFamily IPv4 | Where-Object { $_.ServerAddresses -contains '127.0.0.1' }
+          if ($still) { Write-Error "DNS was not restored"; exit 1 }
+          Resolve-DnsName example.com -Type A | Select-Object -First 2
+          exit $code

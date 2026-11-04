@@ -88,6 +88,24 @@ jobs:
           cp app/build/outputs/apk/release/app-universal-release.apk "dist/Shield-$V.apk"
           cp app/build/outputs/apk/release/app-arm64-v8a-release.apk "dist/Shield-$V-arm64.apk"
           for a in dist/*.apk; do echo "== $a"; "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify -v "$a" | grep -E "Verifies|scheme \(|DOES NOT" ; done
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: desktop/go.mod
+          cache-dependency-path: desktop/go.sum
+      - name: Build Shield for Windows
+        working-directory: desktop
+        run: |
+          V="${{ steps.v.outputs.version }}"
+          sed -i "s/1\.1\.0\.0/${V}.0/g; s/\"ProductVersion\": \"1\.1\.0\"/\"ProductVersion\": \"${V}\"/" winres/winres.json
+          go run github.com/tc-hib/go-winres@v0.3.3 make --in winres/winres.json --out cmd/shield/rsrc --arch amd64
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath \
+            -ldflags "-H=windowsgui -s -w -X github.com/anonym239/shield/desktop/internal/app.Version=$V" \
+            -o ../installer/Shield.exe ./cmd/shield
+          curl -sSLo /tmp/wintun.zip https://www.wintun.net/builds/wintun-0.14.1.zip
+          echo "07c256185d6ee3652e09fa55c0b673e2624b565e02c4b9091c79ca7d2f24ef51  /tmp/wintun.zip" | sha256sum -c -
+          unzip -q -o /tmp/wintun.zip -d /tmp/
+          cp /tmp/wintun/bin/amd64/wintun.dll ../installer/wintun.dll
+          cp winres/shield.ico ../installer/shield.ico
       - name: Build Windows installer (NSIS)
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq nsis > /dev/null
@@ -108,7 +126,7 @@ jobs:
             echo "### Downloads"
             echo "- **Shield-$V-arm64.apk** – empfohlen für fast alle Handys (ARM64, z. B. Samsung Galaxy, Pixel). Auf dem Handy öffnen und installieren."
             echo "- **Shield-$V.apk** – Universal-APK für alle Prozessoren (größer)."
-            echo "- **Shield-Setup-$V.exe** – Windows-Installer: installiert die APK per USB (ADB) auf ein angeschlossenes Android-Handy."
+            echo "- **Shield-Setup-$V.exe** – **Shield für Windows** (DNS-Blocker, verschlüsseltes DNS, WireGuard/Proton-VPN mit Kill-Switch, KI-Prüfung). Optional: Android-App per USB aufs Handy installieren."
             echo "- **SHA256SUMS.txt** – Prüfsummen"
             echo
             echo "$SIGNING_NOTE"
